@@ -3,6 +3,9 @@ name = "repoutil"
 version = "0.5.0"
 authors = ["Chris Davison <c.jr.davison@gmail.com>"]
 edition = "2018"
+license = "MIT"
+repository = "https://github.com/chrisdavison/repoutil"
+description = "Wrapper around my common git commands"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
