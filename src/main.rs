@@ -8,7 +8,7 @@ enum Errs {
     BadRepos = -3,
 }
 
-const USAGE: &'static str = "usage: repoutil (stat|fetch)";
+const USAGE: &'static str = "usage: repoutil (stat|fetch) [DIRS...]";
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -25,7 +25,7 @@ fn main() -> Result<()> {
             std::process::exit(Errs::UnknownCommand as i32);
         }
     };
-    let repos = match git::get_repos() {
+    let repos = match git::get_repos(None) {
         Ok(r) => r,
         _ => {
             eprintln!("Error: couldn't get repos");
@@ -98,16 +98,23 @@ mod git {
         }
     }
 
-    pub fn get_repos() -> Result<Vec<::std::path::PathBuf>> {
-        let codedir = env::var("CODEDIR")?;
-        let repos: Vec<_> = std::fs::read_dir(codedir)?
-            .filter(|d| d.is_ok())
-            .filter(|d| {
-                let entry = d.as_ref().unwrap().path();
-                entry.is_dir() && is_git_repo(entry)
-            })
-            .map(|d| d.unwrap().path())
-            .collect();
+    pub fn get_repos(dirs: Option<Vec<String>>) -> Result<Vec<::std::path::PathBuf>> {
+        let dirs = match dirs {
+            Some(d) => d,
+            None => vec![env::var("CODEDIR")?],
+        };
+        let mut repos = Vec::new();
+        for dir in dirs {
+            let repos_for_dir: Vec<_> = std::fs::read_dir(dir)?
+                .filter(|d| d.is_ok())
+                .filter(|d| {
+                    let entry = d.as_ref().unwrap().path();
+                    entry.is_dir() && is_git_repo(entry)
+                })
+                .map(|d| d.unwrap().path())
+                .collect();
+            repos.extend(repos_for_dir.iter().cloned());
+        }
         Ok(repos)
     }
 }
