@@ -25,7 +25,12 @@ fn main() -> Result<()> {
             std::process::exit(Errs::UnknownCommand as i32);
         }
     };
-    let repos = match git::get_repos(None) {
+    let dirs: Option<Vec<String>> = if args.len() > 1 {
+        Some(args[1..].to_vec())
+    } else {
+        None
+    };
+    let repos = match git::get_repos(dirs) {
         Ok(r) => r,
         _ => {
             eprintln!("Error: couldn't get repos");
