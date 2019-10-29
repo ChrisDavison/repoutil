@@ -25,11 +25,7 @@ fn main() -> Result<()> {
             std::process::exit(Errs::UnknownCommand as i32);
         }
     };
-    let dirs: Option<Vec<String>> = if args.len() > 1 {
-        Some(args[1..].to_vec())
-    } else {
-        None
-    };
+    let dirs: Option<&[String]> = args.get(1..);
     let repos = match git::get_repos(dirs) {
         Ok(r) => r,
         _ => {
@@ -103,9 +99,9 @@ mod git {
         }
     }
 
-    pub fn get_repos(dirs: Option<Vec<String>>) -> Result<Vec<::std::path::PathBuf>> {
+    pub fn get_repos(dirs: Option<&[String]>) -> Result<Vec<::std::path::PathBuf>> {
         let dirs = match dirs {
-            Some(d) => d,
+            Some(d) => d.to_owned(),
             None => vec![env::var("CODEDIR")?],
         };
         let mut repos = Vec::new();
