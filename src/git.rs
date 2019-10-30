@@ -32,10 +32,11 @@ pub fn fetch(p: &PathBuf) -> Result<Option<String>> {
 
 pub fn stat(p: &PathBuf) -> Result<Option<String>> {
     let out_lines = command_output(p, &["status", "-s", "-b"])?;
-    // let lines: Vec<String> = out.lines().map(|x| x.to_string()).collect();
     if out_lines[0].ends_with(']') {
+        // We have an 'ahead', 'behind' or similar, so free to return the status early
         return Ok(Some(out_lines.join("\n")));
     }
+    // We aren't ahead or behind etc, but may have local uncommitted changes
     let status: Vec<String> = out_lines.iter().skip(1).map(|x| x.to_string()).collect();
     if status.is_empty() {
         Ok(None)
@@ -48,8 +49,8 @@ pub fn get_repos(dir: &str) -> Result<Vec<PathBuf>> {
     let mut repos = Vec::new();
     let repos_for_dir: Vec<_> = read_dir(dir)?
         .filter_map(|d| d.ok())
+        .filter(|d| is_git_repo(d.path()))
         .map(|d| d.path())
-        .filter(|d| d.is_dir() && is_git_repo(d.to_path_buf()))
         .collect();
     repos.extend(repos_for_dir.iter().cloned());
     Ok(repos)
