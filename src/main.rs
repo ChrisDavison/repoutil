@@ -8,7 +8,7 @@ type Result<T> = ::std::result::Result<T, Box<dyn ::std::error::Error>>;
 enum Errs {
     BadUsage = -1,
     UnknownCommand = -2,
-    BadRepos = -3,
+    NoParentDirs = -3
 }
 
 const USAGE: &str = "usage: repoutil (stat|fetch) [DIRS...]";
@@ -32,13 +32,17 @@ fn main() -> Result<()> {
         Some(dirs) => dirs.to_vec(),
         None => vec![env::var("CODEDIR")?],
     };
+    if dirs.is_empty() {
+        eprintln!("Must pass dirs or set CODEDIR to a parent dir of multiple repos");
+        std::process::exit(Errs::NoParentDirs as i32);
+    }
     let mut handles = Vec::new();
     for dir in dirs {
         let repos = match git::get_repos(&dir) {
             Ok(r) => r,
-            _ => {
-                eprintln!("Error: couldn't get repos");
-                std::process::exit(Errs::BadRepos as i32);
+            Err(e) => {
+                eprintln!("Error: couldn't get repos: {}", e);
+                continue;
             }
         };
         for repo in repos {
