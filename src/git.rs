@@ -25,9 +25,10 @@ pub fn fetch(p: std::path::PathBuf) -> Option<String> {
     let err_msg = Some(format!("couldn't fetch {:?}", p));
     let out = command_output(p, &["fetch", "--all"], err_msg);
     let status: String = out.lines().skip(1).collect();
-    match status.is_empty() {
-        true => None,
-        false => Some(status),
+    if status.is_empty() {
+        None
+    } else {
+        Some(status)
     }
 }
 
@@ -39,9 +40,11 @@ pub fn stat(p: std::path::PathBuf) -> Option<String> {
         return Some(lines.join("\n"));
     }
     let status: Vec<String> = lines.iter().skip(1).map(|x| x.to_string()).collect();
-    match status.is_empty() {
-        true => None,
-        false => Some(status.join("\n")),
+
+    if status.is_empty() {
+        None
+    } else {
+        Some(status.join("\n"))
     }
 }
 

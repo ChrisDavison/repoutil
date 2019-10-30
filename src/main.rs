@@ -2,7 +2,7 @@ use std::thread;
 
 mod git;
 
-type Result<T> = ::std::result::Result<T, Box<dyn::std::error::Error>>;
+type Result<T> = ::std::result::Result<T, Box<dyn ::std::error::Error>>;
 
 enum Errs {
     BadUsage = -1,
