@@ -1,4 +1,5 @@
 use std::env;
+use std::process::exit;
 use std::thread;
 
 mod git;
@@ -17,7 +18,7 @@ fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.is_empty() {
         eprintln!("{}", USAGE);
-        std::process::exit(Errs::BadUsage as i32);
+        exit(Errs::BadUsage as i32);
     }
     let cmd = match args[0].as_ref() {
         "fetch" => git::fetch,
@@ -25,7 +26,7 @@ fn main() -> Result<()> {
         _ => {
             eprintln!("Error: unrecognised command `{}`", args[0]);
             eprintln!("{}", USAGE);
-            std::process::exit(Errs::UnknownCommand as i32);
+            exit(Errs::UnknownCommand as i32);
         }
     };
     let dirs = match args.get(1..) {
@@ -34,9 +35,10 @@ fn main() -> Result<()> {
     };
     if dirs.is_empty() {
         eprintln!("Must pass dirs or set CODEDIR to a parent dir of multiple repos");
-        std::process::exit(Errs::NoParentDirs as i32);
+        exit(Errs::NoParentDirs as i32);
     }
-    let mut handles = Vec::new();
+
+    let mut all_repos = Vec::new();
     for dir in dirs {
         let repos = match git::get_repos(&dir) {
             Ok(r) => r,
@@ -45,16 +47,19 @@ fn main() -> Result<()> {
                 continue;
             }
         };
-        for repo in repos {
-            // Spawn a thread for each repo
-            // and run the chosen command.
-            // The handle must 'move' to take ownership of `cmd`
-            let handle = thread::spawn(move || match cmd(repo.clone()) {
-                Some(out) => println!("{}\n{}\n", repo.display(), out),
-                None => return,
-            });
-            handles.push(handle);
-        }
+        all_repos.extend(repos);
+    }
+
+    let mut handles = Vec::new();
+    for repo in all_repos {
+        // Spawn a thread for each repo
+        // and run the chosen command.
+        // The handle must 'move' to take ownership of `cmd`
+        let handle = thread::spawn(move || match cmd(&repo) {
+            Ok(Some(out)) => println!("{}\n{}\n", repo.display(), out),
+            _ => return,
+        });
+        handles.push(handle);
     }
 
     for h in handles {
