@@ -1,5 +1,4 @@
 use super::Result;
-use std::env;
 
 pub fn is_git_repo(mut p: std::path::PathBuf) -> bool {
     p.push(".git");
@@ -48,22 +47,16 @@ pub fn stat(p: std::path::PathBuf) -> Option<String> {
     }
 }
 
-pub fn get_repos(dirs: Option<&[String]>) -> Result<Vec<::std::path::PathBuf>> {
-    let dirs = match dirs {
-        Some(d) => d.to_owned(),
-        None => vec![env::var("CODEDIR")?],
-    };
+pub fn get_repos(dir: &str) -> Result<Vec<::std::path::PathBuf>> {
     let mut repos = Vec::new();
-    for dir in dirs {
-        let repos_for_dir: Vec<_> = std::fs::read_dir(dir)?
-            .filter(|d| d.is_ok())
-            .filter(|d| {
-                let entry = d.as_ref().unwrap().path();
-                entry.is_dir() && is_git_repo(entry)
-            })
-            .map(|d| d.unwrap().path())
-            .collect();
-        repos.extend(repos_for_dir.iter().cloned());
-    }
+    let repos_for_dir: Vec<_> = std::fs::read_dir(dir)?
+        .filter(|d| d.is_ok())
+        .filter(|d| {
+            let entry = d.as_ref().unwrap().path();
+            entry.is_dir() && is_git_repo(entry)
+        })
+        .map(|d| d.unwrap().path())
+        .collect();
+    repos.extend(repos_for_dir.iter().cloned());
     Ok(repos)
 }

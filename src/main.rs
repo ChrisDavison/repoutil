@@ -1,3 +1,4 @@
+use std::env;
 use std::thread;
 
 mod git;
@@ -27,26 +28,31 @@ fn main() -> Result<()> {
             std::process::exit(Errs::UnknownCommand as i32);
         }
     };
-    let dirs: Option<&[String]> = args.get(1..);
-    let repos = match git::get_repos(dirs) {
-        Ok(r) => r,
-        _ => {
-            eprintln!("Error: couldn't get repos");
-            std::process::exit(Errs::BadRepos as i32);
-        }
+    let dirs = match args.get(1..) {
+        Some(dirs) => dirs.to_vec(),
+        None => vec![env::var("CODEDIR")?],
     };
-
     let mut handles = Vec::new();
-    for repo in repos {
-        // Spawn a thread for each repo
-        // and run the chosen command.
-        // The handle must 'move' to take ownership of `cmd`
-        let handle = thread::spawn(move || match cmd(repo.clone()) {
-            Some(out) => println!("{}\n{}\n", repo.display(), out),
-            None => return,
-        });
-        handles.push(handle);
+    for dir in dirs {
+        let repos = match git::get_repos(&dir) {
+            Ok(r) => r,
+            _ => {
+                eprintln!("Error: couldn't get repos");
+                std::process::exit(Errs::BadRepos as i32);
+            }
+        };
+        for repo in repos {
+            // Spawn a thread for each repo
+            // and run the chosen command.
+            // The handle must 'move' to take ownership of `cmd`
+            let handle = thread::spawn(move || match cmd(repo.clone()) {
+                Some(out) => println!("{}\n{}\n", repo.display(), out),
+                None => return,
+            });
+            handles.push(handle);
+        }
     }
+
     for h in handles {
         h.join().unwrap();
     }
