@@ -10,7 +10,7 @@ enum Errs {
     BadRepos = -3,
 }
 
-const USAGE: &'static str = "usage: repoutil (stat|fetch) [DIRS...]";
+const USAGE: &str = "usage: repoutil (stat|fetch) [DIRS...]";
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
