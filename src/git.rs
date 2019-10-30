@@ -15,7 +15,6 @@ fn command_output(dir: &PathBuf, args: &[&str]) -> Result<Vec<String>> {
         .output()
         .map_err(|_| format!("couldn't run command `git {:?}` on `{:?}`", args, dir))?;
     Ok(std::str::from_utf8(&out.stdout)?
-        .to_string()
         .lines()
         .map(|x| x.to_string())
         .collect())
