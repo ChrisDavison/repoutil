@@ -34,7 +34,7 @@ pub fn stat(p: &PathBuf) -> Result<Option<String>> {
     let out_lines = command_output(p, &["status", "-s", "-b"])?;
     if out_lines[0].ends_with(']') {
         // We have an 'ahead', 'behind' or similar, so free to return the status early
-        return Ok(Some(out_lines.join("\n")));
+        return Ok(Some(format!("\n{}\n", out_lines.join("\n"))));
     }
     // We aren't ahead or behind etc, but may have local uncommitted changes
     let status: Vec<String> = out_lines.iter().skip(1).map(|x| x.to_string()).collect();
