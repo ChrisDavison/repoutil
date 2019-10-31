@@ -13,7 +13,7 @@ fn command_output(dir: &PathBuf, args: &[&str]) -> Result<Vec<String>> {
         .current_dir(dir.clone())
         .args(args)
         .output()
-        .map_err(|_| format!("couldn't run command `git {:?}` on `{:?}`", args, dir))?;
+        .map_err(|_| format!("couldcountn't run command `git {:?}` on `{:?}`", args, dir))?;
     Ok(std::str::from_utf8(&out.stdout)?
         .lines()
         .map(|x| x.to_string())
@@ -26,7 +26,7 @@ pub fn fetch(p: &PathBuf) -> Result<Option<String>> {
     if status.is_empty() {
         Ok(None)
     } else {
-        Ok(Some(format!("\n{}\n", status)))
+        Ok(Some(format!("{}\n{}\n", p.display(), status)))
     }
 }
 
@@ -41,12 +41,19 @@ pub fn stat(p: &PathBuf) -> Result<Option<String>> {
     if status.is_empty() {
         Ok(None)
     } else {
-        Ok(Some(format!("\n{}\n", status.join("\n"))))
+        Ok(Some(format!("{}\n{}\n", p.display(), status.join("\n"))))
     }
 }
 
-pub fn list(_p: &PathBuf) -> Result<Option<String>> {
-    Ok(Some("".to_string()))
+pub fn needs_attention(p: &PathBuf) -> Result<Option<String>> {
+    match stat(p) {
+        Ok(Some(_)) => Ok(Some(p.display().to_string())),
+        _ => Ok(None),
+    }
+}
+
+pub fn list(p: &PathBuf) -> Result<Option<String>> {
+    Ok(Some(p.display().to_string()))
 }
 
 pub fn get_repos(dir: &str) -> Result<Vec<PathBuf>> {
