@@ -1,51 +1,30 @@
 use std::env;
-use std::process::exit;
 use std::thread;
 
 mod git;
 
 type Result<T> = ::std::result::Result<T, Box<dyn ::std::error::Error>>;
 
-enum Errs {
-    BadUsage = -1,
-    UnknownCommand = -2,
-    NoParentDirs = -3
-}
-
 const USAGE: &str = "usage: repoutil (stat|fetch|list|unclean) [DIRS...]";
 
-fn main() -> Result<()> {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    if args.is_empty() {
-        eprintln!("{}", USAGE);
-        exit(Errs::BadUsage as i32);
-    }
-    let cmd = match args[0].as_ref() {
-        "fetch" => git::fetch,
-        "stat" => git::stat,
-        "list" => git::list,
-        "unclean" => git::needs_attention,
-        _ => {
-            eprintln!("Error: unrecognised command `{}`", args[0]);
+type GitCommand = fn(&std::path::PathBuf) -> Result<Option<String>>;
+
+fn main() {
+    let (cmd, dirs) = match parse_args() {
+        Ok((cmd, dirs)) => (cmd, dirs),
+        Err(e) => {
+            eprintln!("{}\n", e);
             eprintln!("{}", USAGE);
-            exit(Errs::UnknownCommand as i32);
+            return;
         }
     };
-    let dirs = match args.get(1..) {
-        Some(dirs) => dirs.to_vec(),
-        None => vec![env::var("CODEDIR")?],
-    };
-    if dirs.is_empty() {
-        eprintln!("Must pass dirs or set CODEDIR to a parent dir of multiple repos");
-        exit(Errs::NoParentDirs as i32);
-    }
 
     let mut all_repos = Vec::new();
     for dir in dirs {
         let repos = match git::get_repos(&dir) {
             Ok(r) => r,
             Err(e) => {
-                eprintln!("Error: couldn't get repos: {}", e);
+                eprintln!("Couldn't get repos from '{}'", e);
                 continue;
             }
         };
@@ -57,16 +36,44 @@ fn main() -> Result<()> {
         // Spawn a thread for each repo
         // and run the chosen command.
         // The handle must 'move' to take ownership of `cmd`
-        let handle = thread::spawn(move ||
-            if let Ok(Some(out)) = cmd(&repo) {
-                println!("{}", out);
+        let handle = thread::spawn(move || {
+            match cmd(&repo) {
+                Ok(Some(out)) => println!("{}", out),
+                Err(e) => eprintln!("Repo {}: {}", repo.display(), e),
+                _ => (),
             }
-        );
+        });
         handles.push(handle);
     }
 
     for h in handles {
-        h.join().unwrap();
+        if let Err(e) = h.join() {
+            eprintln!("A child git command panic'd: {:?}", e);
+        }
     }
-    Ok(())
+}
+
+fn parse_args() -> Result<(GitCommand, Vec<String>)> {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.is_empty() {
+        return Err("No arguments given".into());
+    }
+    let cmd = match args[0].as_ref() {
+        "fetch" => git::fetch,
+        "stat" => git::stat,
+        "list" => git::list,
+        "unclean" => git::needs_attention,
+        _ => {
+            return Err(format!("Unrecognised command `{}`", args[0]).into());
+        }
+    };
+    let dirs = match args.get(1..) {
+        Some(dirs) => dirs.to_vec(),
+        None => vec![env::var("CODEDIR")?],
+    };
+    if dirs.is_empty() {
+        return Err("Must pass dirs or set CODEDIR to a parent dir of multiple repos".into());
+    }
+
+    Ok((cmd, dirs))
 }
