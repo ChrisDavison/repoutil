@@ -23,6 +23,7 @@ fn main() -> Result<()> {
     let cmd = match args[0].as_ref() {
         "fetch" => git::fetch,
         "stat" => git::stat,
+        "list" => git::list,
         _ => {
             eprintln!("Error: unrecognised command `{}`", args[0]);
             eprintln!("{}", USAGE);
@@ -55,10 +56,11 @@ fn main() -> Result<()> {
         // Spawn a thread for each repo
         // and run the chosen command.
         // The handle must 'move' to take ownership of `cmd`
-        let handle = thread::spawn(move || match cmd(&repo) {
-            Ok(Some(out)) => println!("{}\n{}\n", repo.display(), out),
-            _ => return,
-        });
+        let handle = thread::spawn(move ||
+            if let Ok(Some(out)) = cmd(&repo) {
+                println!("{}{}", repo.display(), out);
+            }
+        );
         handles.push(handle);
     }
 
