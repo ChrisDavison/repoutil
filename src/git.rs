@@ -26,7 +26,7 @@ pub fn fetch(p: &PathBuf) -> Result<Option<String>> {
     if status.is_empty() {
         Ok(None)
     } else {
-        Ok(Some(status))
+        Ok(Some(format!("\n{}\n", status)))
     }
 }
 
@@ -41,8 +41,12 @@ pub fn stat(p: &PathBuf) -> Result<Option<String>> {
     if status.is_empty() {
         Ok(None)
     } else {
-        Ok(Some(status.join("\n")))
+        Ok(Some(format!("\n{}\n", status.join("\n"))))
     }
+}
+
+pub fn list(_p: &PathBuf) -> Result<Option<String>> {
+    Ok(Some("".to_string()))
 }
 
 pub fn get_repos(dir: &str) -> Result<Vec<PathBuf>> {
