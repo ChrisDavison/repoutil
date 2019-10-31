@@ -12,7 +12,7 @@ enum Errs {
     NoParentDirs = -3
 }
 
-const USAGE: &str = "usage: repoutil (stat|fetch) [DIRS...]";
+const USAGE: &str = "usage: repoutil (stat|fetch|list|unclean) [DIRS...]";
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -24,6 +24,7 @@ fn main() -> Result<()> {
         "fetch" => git::fetch,
         "stat" => git::stat,
         "list" => git::list,
+        "unclean" => git::needs_attention,
         _ => {
             eprintln!("Error: unrecognised command `{}`", args[0]);
             eprintln!("{}", USAGE);
@@ -58,7 +59,7 @@ fn main() -> Result<()> {
         // The handle must 'move' to take ownership of `cmd`
         let handle = thread::spawn(move ||
             if let Ok(Some(out)) = cmd(&repo) {
-                println!("{}{}", repo.display(), out);
+                println!("{}", out);
             }
         );
         handles.push(handle);
