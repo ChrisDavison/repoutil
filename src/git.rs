@@ -3,7 +3,8 @@ use std::fs::read_dir;
 use std::path::PathBuf;
 use std::process::Command;
 
-pub fn is_git_repo(mut p: PathBuf) -> bool {
+pub fn is_git_repo(p: &PathBuf) -> bool {
+    let mut p = p.clone();
     p.push(".git");
     p.exists()
 }
@@ -66,8 +67,8 @@ pub fn get_repos(dir: &str) -> Result<Vec<PathBuf>> {
     let mut repos = Vec::new();
     let repos_for_dir: Vec<_> = read_dir(dir)?
         .filter_map(|d| d.ok())
-        .filter(|d| is_git_repo(d.path()))
         .map(|d| d.path())
+        .filter(|d| is_git_repo(d))
         .collect();
     repos.extend(repos_for_dir.iter().cloned());
     Ok(repos)
