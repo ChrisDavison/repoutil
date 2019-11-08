@@ -36,12 +36,10 @@ fn main() {
         // Spawn a thread for each repo
         // and run the chosen command.
         // The handle must 'move' to take ownership of `cmd`
-        let handle = thread::spawn(move || {
-            match cmd(&repo) {
-                Ok(Some(out)) => println!("{}", out),
-                Err(e) => eprintln!("Repo {}: {}", repo.display(), e),
-                _ => (),
-            }
+        let handle = thread::spawn(move || match cmd(&repo) {
+            Ok(Some(out)) => println!("{}", out),
+            Err(e) => eprintln!("Repo {}: {}", repo.display(), e),
+            _ => (),
         });
         handles.push(handle);
     }
