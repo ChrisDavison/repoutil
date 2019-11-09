@@ -3,7 +3,7 @@ use std::thread;
 
 mod git;
 
-type Result<T> = ::std::result::Result<T, Box<dyn ::std::error::Error>>;
+type Result<T> = ::std::result::Result<T, Box<dyn::std::error::Error>>;
 
 const USAGE: &str = "usage: repoutil (stat|fetch|list|unclean) [DIRS...]";
 
