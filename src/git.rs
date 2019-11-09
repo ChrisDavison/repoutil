@@ -36,6 +36,9 @@ pub fn fetch(p: &PathBuf) -> Result<Option<String>> {
 // Get the short status (ahead, behind, and modified files) of a repo
 pub fn stat(p: &PathBuf) -> Result<Option<String>> {
     let out_lines = command_output(p, &["status", "-s", "-b"])?;
+    if out_lines.is_empty() {
+        return Err("Status was empty".into());
+    }
     if out_lines[0].ends_with(']') {
         // We have an 'ahead', 'behind' or similar, so free to return the status early
         return Ok(Some(format!("{}\n{}\n", p.display(), out_lines.join("\n"))));
