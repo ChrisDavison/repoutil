@@ -4,3 +4,16 @@
 !_TAG_PROGRAM_NAME	Exuberant Ctags	//
 !_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
 !_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+GitCommand	src/main.rs	/^type GitCommand = fn(&std::path::PathBuf) -> Result<Option<String>>;$/;"	T
+Result	src/main.rs	/^type Result<T> = ::std::result::Result<T, Box<dyn::std::error::Error>>;$/;"	T
+USAGE	src/main.rs	/^const USAGE: &str = "usage: repoutil (stat|fetch|list|unclean) [DIRS...]";$/;"	c
+command_output	src/git.rs	/^fn command_output(dir: &PathBuf, args: &[&str]) -> Result<Vec<String>> {$/;"	f
+fetch	src/git.rs	/^pub fn fetch(p: &PathBuf) -> Result<Option<String>> {$/;"	f
+get_repos	src/git.rs	/^pub fn get_repos(dir: &str) -> Result<Vec<PathBuf>> {$/;"	f
+git	src/main.rs	/^mod git;$/;"	m
+is_git_repo	src/git.rs	/^pub fn is_git_repo(p: &PathBuf) -> bool {$/;"	f
+list	src/git.rs	/^pub fn list(p: &PathBuf) -> Result<Option<String>> {$/;"	f
+main	src/main.rs	/^fn main() {$/;"	f
+needs_attention	src/git.rs	/^pub fn needs_attention(p: &PathBuf) -> Result<Option<String>> {$/;"	f
+parse_args	src/main.rs	/^fn parse_args() -> Result<(GitCommand, Vec<String>)> {$/;"	f
+stat	src/git.rs	/^pub fn stat(p: &PathBuf) -> Result<Option<String>> {$/;"	f
