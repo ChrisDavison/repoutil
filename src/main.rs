@@ -24,7 +24,7 @@ fn main() {
         let repos = match git::get_repos(&dir) {
             Ok(r) => r,
             Err(e) => {
-                eprintln!("Couldn't get repos from '{}'", e);
+                eprintln!("Couldn't get repos from '{}': '{}'\n", dir, e);
                 continue;
             }
         };
