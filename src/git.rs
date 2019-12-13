@@ -67,9 +67,11 @@ pub fn list(p: &PathBuf) -> Result<Option<String>> {
 
 // Get every repo from subdirs of `dir`
 pub fn get_repos(dir: &str) -> Result<Vec<PathBuf>> {
-    Ok(read_dir(dir)?
+    let mut repos: Vec<PathBuf> = read_dir(dir)?
         .filter_map(|d| d.ok())
         .map(|d| d.path())
         .filter(|d| is_git_repo(d))
-        .collect())
+        .collect();
+    repos.sort();
+    Ok(repos)
 }
