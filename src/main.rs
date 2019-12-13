@@ -15,10 +15,10 @@ fn main() {
         return;
     }
     let cmd = match args[0].as_ref() {
-        "fetch" => git::fetch,
-        "stat" => git::stat,
-        "list" => git::list,
-        "unclean" => git::needs_attention,
+        "fetch" | "f" => git::fetch,
+        "stat" | "s" => git::stat,
+        "list" | "l" => git::list,
+        "unclean" | "u" => git::needs_attention,
         _ => {
             eprintln!("Command `{}` not valid.\n", args[0]);
             eprintln!("{}", USAGE);
@@ -27,13 +27,12 @@ fn main() {
     };
     let dirs = match get_dirs_from_config() {
         Ok(d) => d,
-        Err(e) =>  {
+        Err(e) => {
             eprintln!("{}", e);
             eprintln!("{}", USAGE);
             return;
         }
     };
-    
     let mut all_repos = Vec::new();
     for dir in dirs {
         let repos = match git::get_repos(&dir) {
@@ -76,4 +75,3 @@ fn get_dirs_from_config() -> Result<Vec<String>> {
         Err(format!("No ~/.repoutilrc, or passed dirs").into())
     }
 }
-
