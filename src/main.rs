@@ -1,24 +1,39 @@
-use std::env;
 use std::thread;
+
+use shellexpand::tilde;
 
 mod git;
 
-type Result<T> = ::std::result::Result<T, Box<dyn::std::error::Error>>;
+type Result<T> = ::std::result::Result<T, Box<dyn ::std::error::Error>>;
 
-const USAGE: &str = "usage: repoutil (stat|fetch|list|unclean) [DIRS...]";
-
-type GitCommand = fn(&std::path::PathBuf) -> Result<Option<String>>;
+const USAGE: &str = "usage: repoutil stat|fetch|list|unclean";
 
 fn main() {
-    let (cmd, dirs) = match parse_args() {
-        Ok((cmd, dirs)) => (cmd, dirs),
-        Err(e) => {
-            eprintln!("{}\n", e);
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.is_empty() {
+        eprintln!("{}", USAGE);
+        return;
+    }
+    let cmd = match args[0].as_ref() {
+        "fetch" => git::fetch,
+        "stat" => git::stat,
+        "list" => git::list,
+        "unclean" => git::needs_attention,
+        _ => {
+            eprintln!("Command `{}` not valid.\n", args[0]);
             eprintln!("{}", USAGE);
             return;
         }
     };
-
+    let dirs = match get_dirs_from_config() {
+        Ok(d) => d,
+        Err(e) =>  {
+            eprintln!("{}", e);
+            eprintln!("{}", USAGE);
+            return;
+        }
+    };
+    
     let mut all_repos = Vec::new();
     for dir in dirs {
         let repos = match git::get_repos(&dir) {
@@ -51,27 +66,14 @@ fn main() {
     }
 }
 
-fn parse_args() -> Result<(GitCommand, Vec<String>)> {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    if args.is_empty() {
-        return Err("No arguments given".into());
+fn get_dirs_from_config() -> Result<Vec<String>> {
+    let repoutil_config = tilde("~/.repoutilrc").to_string();
+    let p = std::path::Path::new(&repoutil_config);
+    if p.exists() {
+        let contents = std::fs::read_to_string(p)?;
+        Ok(contents.lines().map(|x| tilde(x).to_string()).collect())
+    } else {
+        Err(format!("No ~/.repoutilrc, or passed dirs").into())
     }
-    let cmd = match args[0].as_ref() {
-        "fetch" => git::fetch,
-        "stat" => git::stat,
-        "list" => git::list,
-        "unclean" => git::needs_attention,
-        _ => {
-            return Err(format!("Unrecognised command `{}`", args[0]).into());
-        }
-    };
-    let dirs = match args.get(1..) {
-        Some(dirs) => dirs.to_vec(),
-        None => vec![env::var("CODEDIR")?],
-    };
-    if dirs.is_empty() {
-        return Err("Must pass dirs or set CODEDIR to a parent dir of multiple repos".into());
-    }
-
-    Ok((cmd, dirs))
 }
+
