@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::thread;
 
 use shellexpand::tilde;
@@ -35,15 +36,21 @@ fn main() {
     };
     let mut all_repos = Vec::new();
     for dir in dirs {
-        let repos = match git::get_repos(&dir) {
-            Ok(r) => r,
-            Err(e) => {
-                eprintln!("Couldn't get repos from '{}': '{}'\n", dir, e);
-                continue;
-            }
-        };
-        all_repos.extend(repos);
+        if git::is_git_repo(&dir) {
+            all_repos.push(dir);
+        } else {
+            let repos = match git::get_repos(&dir) {
+                Ok(r) => r,
+                Err(e) => {
+                    eprintln!("Couldn't get repos from '{:?}': '{}'\n", dir, e);
+                    continue;
+                }
+            };
+            all_repos.extend(repos);
+        }
     }
+    all_repos.sort();
+    all_repos.dedup();
 
     let mut handles = Vec::new();
     for repo in all_repos {
@@ -65,12 +72,15 @@ fn main() {
     }
 }
 
-fn get_dirs_from_config() -> Result<Vec<String>> {
+fn get_dirs_from_config() -> Result<Vec<PathBuf>> {
     let repoutil_config = tilde("~/.repoutilrc").to_string();
     let p = std::path::Path::new(&repoutil_config);
     if p.exists() {
         let contents = std::fs::read_to_string(p)?;
-        Ok(contents.lines().map(|x| tilde(x).to_string()).collect())
+        Ok(contents
+            .lines()
+            .map(|x| PathBuf::from(tilde(x).to_string()))
+            .collect())
     } else {
         Err(format!("No ~/.repoutilrc, or passed dirs").into())
     }

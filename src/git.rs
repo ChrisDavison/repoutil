@@ -66,7 +66,7 @@ pub fn list(p: &PathBuf) -> Result<Option<String>> {
 }
 
 // Get every repo from subdirs of `dir`
-pub fn get_repos(dir: &str) -> Result<Vec<PathBuf>> {
+pub fn get_repos(dir: &PathBuf) -> Result<Vec<PathBuf>> {
     let mut repos: Vec<PathBuf> = read_dir(dir)?
         .filter_map(|d| d.ok())
         .map(|d| d.path())
