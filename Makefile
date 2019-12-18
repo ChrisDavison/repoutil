@@ -14,3 +14,8 @@ check:
 
 format fmt:
 	cargo fmt
+
+sync:
+	git pull
+
+update: sync install
