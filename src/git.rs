@@ -52,6 +52,89 @@ pub fn stat(p: &PathBuf) -> Result<Option<String>> {
     }
 }
 
+mod git_commands {
+    use super::{command_output, Result, PathBuf};
+
+    pub fn ahead_behind(p: &PathBuf) -> Result<Option<String>> {
+        let response: String = command_output(
+            p,
+            &[
+                "for-each-ref",
+                "--format='%(refname:short) %(upstream:track)'",
+                "refs/heads",
+            ])?
+            .iter()
+            .map(|x| x.trim_matches('\'').trim())
+            .filter(|x| {
+                let splits: Vec<&str> = x.split(' ').collect();
+                splits.get(1).is_some()
+            })
+            .collect();
+        if !response.is_empty() {
+            Ok(Some(format!("{}", response)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn modified(p: &PathBuf) -> Result<Option<String>> {
+        let modified = command_output(p, &["diff", "--shortstat"])?.join("\n");
+        if modified.contains("changed") {
+            let num = modified.trim_start().split(" ").collect::<Vec<&str>>()[0];
+            Ok(Some(format!("Modified {}", num)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn status(p: &PathBuf) -> Result<Option<String>> {
+        let response = command_output(p, &["diff", "--stat", "--cached"])?;
+        if !response.is_empty() {
+            Ok(Some(format!("Staged {}", response.len())))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn untracked(p: &PathBuf) -> Result<Option<String>> {
+        let untracked = command_output(p, &["ls-files", "--others", "--exclude-standard"])?;
+        if !untracked.is_empty() {
+            Ok(Some(format!("Untracked {}", untracked.len())))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+
+
+pub fn branchstat(p: &PathBuf) -> Result<Option<String>> {
+    // ahead-behind
+    let mut outputs: Vec<String> = Vec::new();
+    if let Ok(Some(out)) = git_commands::ahead_behind(p) {
+        outputs.push(out);
+    }
+
+    if let Ok(Some(out)) = git_commands::modified(p) {
+        outputs.push(out);
+    }
+
+    if let Ok(Some(out)) = git_commands::status(p) {
+        outputs.push(out);
+    }
+
+    if let Ok(Some(out)) = git_commands::untracked(p) {
+        outputs.push(out);
+    }
+
+    if outputs.is_empty() {
+        Ok(None)
+    } else {
+        let out = format!("{}\n{}\n", p.display().to_string(), outputs.join(", "));
+        Ok(Some(out))
+    }
+}
+
 // Get the name of any repo with local or remote changes
 pub fn needs_attention(p: &PathBuf) -> Result<Option<String>> {
     match stat(p) {

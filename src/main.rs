@@ -20,6 +20,7 @@ fn main() {
         "stat" | "s" => git::stat,
         "list" | "l" => git::list,
         "unclean" | "u" => git::needs_attention,
+        "branchstat" | "b" => git::branchstat,
         _ => {
             eprintln!("Command `{}` not valid.\n", args[0]);
             eprintln!("{}", USAGE);
