@@ -103,6 +103,22 @@ fn untracked(p: &PathBuf) -> Result<Option<String>> {
     }
 }
 
+fn path_and_parent(p: &PathBuf) -> String {
+    let parent = p.parent().unwrap().file_stem().unwrap().to_string_lossy();
+    let dir = p.file_stem().unwrap().to_string_lossy();
+    format!("{}/{}", parent, dir)
+}
+
+pub fn branches(p: &PathBuf) -> Result<Option<String>> {
+    let branches: String = command_output(p, &["branch"])?
+        .iter()
+        .map(|x| x.trim())
+        .filter(|x| x.starts_with("*")).
+        map(|x| &x[2..])
+        .collect();
+    Ok(Some(format!("{:40}\t{}", path_and_parent(p), branches)))
+}
+
 pub fn branchstat(p: &PathBuf) -> Result<Option<String>> {
     // ahead-behind
     let outputs = vec![ahead_behind(p)?, modified(p)?, status(p)?, untracked(p)?]
