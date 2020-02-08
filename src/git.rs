@@ -37,100 +37,85 @@ pub fn fetch(p: &PathBuf) -> Result<Option<String>> {
 pub fn stat(p: &PathBuf) -> Result<Option<String>> {
     let out_lines = command_output(p, &["status", "-s", "-b"])?;
     if out_lines.is_empty() {
-        return Err("Status was empty".into());
-    }
-    if out_lines[0].ends_with(']') {
-        // We have an 'ahead', 'behind' or similar, so free to return the status early
-        return Ok(Some(format!("{}\n{}\n", p.display(), out_lines.join("\n"))));
-    }
-    // We aren't ahead or behind etc, but may have local uncommitted changes
-    let status: Vec<String> = out_lines.iter().skip(1).map(|x| x.to_string()).collect();
-    if status.is_empty() {
         Ok(None)
+    } else if out_lines[0].ends_with(']') {
+        // We have an 'ahead', 'behind' or similar, so free to return the status early
+        Ok(Some(format!("{}\n{}\n", p.display(), out_lines.join("\n"))))
     } else {
-        Ok(Some(format!("{}\n{}\n", p.display(), status.join("\n"))))
-    }
-}
-
-mod git_commands {
-    use super::{command_output, Result, PathBuf};
-
-    pub fn ahead_behind(p: &PathBuf) -> Result<Option<String>> {
-        let response: String = command_output(
-            p,
-            &[
-                "for-each-ref",
-                "--format='%(refname:short) %(upstream:track)'",
-                "refs/heads",
-            ])?
-            .iter()
-            .map(|x| x.trim_matches('\'').trim())
-            .filter(|x| {
-                let splits: Vec<&str> = x.split(' ').collect();
-                splits.get(1).is_some()
-            })
-            .collect();
-        if !response.is_empty() {
-            Ok(Some(format!("{}", response)))
-        } else {
+        // We aren't ahead or behind etc, but may have local uncommitted changes
+        let status: Vec<String> = out_lines.iter().skip(1).map(|x| x.to_string()).collect();
+        if status.is_empty() {
             Ok(None)
-        }
-    }
-
-    pub fn modified(p: &PathBuf) -> Result<Option<String>> {
-        let modified = command_output(p, &["diff", "--shortstat"])?.join("\n");
-        if modified.contains("changed") {
-            let num = modified.trim_start().split(" ").collect::<Vec<&str>>()[0];
-            Ok(Some(format!("Modified {}", num)))
         } else {
-            Ok(None)
-        }
-    }
-
-    pub fn status(p: &PathBuf) -> Result<Option<String>> {
-        let response = command_output(p, &["diff", "--stat", "--cached"])?;
-        if !response.is_empty() {
-            Ok(Some(format!("Staged {}", response.len())))
-        } else {
-            Ok(None)
-        }
-    }
-
-    pub fn untracked(p: &PathBuf) -> Result<Option<String>> {
-        let untracked = command_output(p, &["ls-files", "--others", "--exclude-standard"])?;
-        if !untracked.is_empty() {
-            Ok(Some(format!("Untracked {}", untracked.len())))
-        } else {
-            Ok(None)
+            Ok(Some(format!("{}\n{}\n", p.display(), status.join("\n"))))
         }
     }
 }
 
+fn ahead_behind(p: &PathBuf) -> Result<Option<String>> {
+    let response: String = command_output(
+        p,
+        &[
+            "for-each-ref",
+            "--format='%(refname:short) %(upstream:track)'",
+            "refs/heads",
+        ],
+    )?
+    .iter()
+    .map(|x| x.trim_matches('\'').trim())
+    .filter(|x| {
+        let splits: Vec<&str> = x.split(' ').collect();
+        splits.get(1).is_some()
+    })
+    .collect();
+    if !response.is_empty() {
+        Ok(Some(format!("{}", response)))
+    } else {
+        Ok(None)
+    }
+}
 
+fn modified(p: &PathBuf) -> Result<Option<String>> {
+    let modified = command_output(p, &["diff", "--shortstat"])?.join("\n");
+    if modified.contains("changed") {
+        let num = modified.trim_start().split(" ").collect::<Vec<&str>>()[0];
+        Ok(Some(format!("Modified {}", num)))
+    } else {
+        Ok(None)
+    }
+}
+
+fn status(p: &PathBuf) -> Result<Option<String>> {
+    let response = command_output(p, &["diff", "--stat", "--cached"])?;
+    if !response.is_empty() {
+        Ok(Some(format!("Staged {}", response.len())))
+    } else {
+        Ok(None)
+    }
+}
+
+fn untracked(p: &PathBuf) -> Result<Option<String>> {
+    let untracked = command_output(p, &["ls-files", "--others", "--exclude-standard"])?;
+    if !untracked.is_empty() {
+        Ok(Some(format!("Untracked {}", untracked.len())))
+    } else {
+        Ok(None)
+    }
+}
 
 pub fn branchstat(p: &PathBuf) -> Result<Option<String>> {
     // ahead-behind
-    let mut outputs: Vec<String> = Vec::new();
-    if let Ok(Some(out)) = git_commands::ahead_behind(p) {
-        outputs.push(out);
-    }
-
-    if let Ok(Some(out)) = git_commands::modified(p) {
-        outputs.push(out);
-    }
-
-    if let Ok(Some(out)) = git_commands::status(p) {
-        outputs.push(out);
-    }
-
-    if let Ok(Some(out)) = git_commands::untracked(p) {
-        outputs.push(out);
-    }
+    let outputs = vec![ahead_behind(p)?, modified(p)?, status(p)?, untracked(p)?]
+        .iter()
+        .filter(|&x| x.is_some())
+        .map(|x| x.as_ref().unwrap().as_str())
+        .collect::<Vec<&str>>()
+        .join(", ");
 
     if outputs.is_empty() {
         Ok(None)
     } else {
-        let out = format!("{}\n{}\n", p.display().to_string(), outputs.join(", "));
+        let out = format!("{}\n{}\n", p.display().to_string(), outputs);
         Ok(Some(out))
     }
 }
