@@ -1,3 +1,4 @@
+use std::fs::read_dir;
 use std::path::PathBuf;
 use std::thread;
 
@@ -41,7 +42,7 @@ fn main() {
         if git::is_git_repo(&dir) {
             all_repos.push(dir);
         } else {
-            let repos = match git::get_repos(&dir) {
+            let repos = match get_repos(&dir) {
                 Ok(r) => r,
                 Err(e) => {
                     eprintln!("Couldn't get repos from '{:?}': '{}'\n", dir, e);
@@ -84,6 +85,17 @@ fn get_dirs_from_config() -> Result<Vec<PathBuf>> {
             .map(|x| PathBuf::from(tilde(x).to_string()))
             .collect())
     } else {
-        Err(format!("No ~/.repoutilrc, or passed dirs").into())
+        Err("No ~/.repoutilrc, or passed dirs".into())
     }
+}
+
+// Get every repo from subdirs of `dir`
+fn get_repos(dir: &PathBuf) -> Result<Vec<PathBuf>> {
+    let mut repos: Vec<PathBuf> = read_dir(dir)?
+        .filter_map(|d| d.ok())
+        .map(|d| d.path())
+        .filter(|d| git::is_git_repo(d))
+        .collect();
+    repos.sort();
+    Ok(repos)
 }
