@@ -1,5 +1,5 @@
 use super::Result;
-use std::fs::read_dir;
+
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -14,8 +14,7 @@ fn command_output(dir: &PathBuf, args: &[&str]) -> Result<Vec<String>> {
     let out = Command::new("git")
         .current_dir(dir.clone())
         .args(args)
-        .output()
-        .map_err(|_| format!("counldn't run command `git {:?}` on `{:?}`", args, dir))?;
+        .output()?;
     Ok(std::str::from_utf8(&out.stdout)?
         .lines()
         .map(|x| x.to_string())
@@ -69,7 +68,7 @@ fn ahead_behind(p: &PathBuf) -> Result<Option<String>> {
     })
     .collect();
     if !response.is_empty() {
-        Ok(Some(format!("{}", response)))
+        Ok(Some(response))
     } else {
         Ok(None)
     }
@@ -78,7 +77,7 @@ fn ahead_behind(p: &PathBuf) -> Result<Option<String>> {
 fn modified(p: &PathBuf) -> Result<Option<String>> {
     let modified = command_output(p, &["diff", "--shortstat"])?.join("\n");
     if modified.contains("changed") {
-        let num = modified.trim_start().split(" ").collect::<Vec<&str>>()[0];
+        let num = modified.trim_start().split(' ').collect::<Vec<&str>>()[0];
         Ok(Some(format!("Modified {}", num)))
     } else {
         Ok(None)
@@ -113,14 +112,13 @@ pub fn branches(p: &PathBuf) -> Result<Option<String>> {
     let branches: String = command_output(p, &["branch"])?
         .iter()
         .map(|x| x.trim())
-        .filter(|x| x.starts_with("*")).
+        .filter(|x| x.starts_with('*')).
         map(|x| &x[2..])
         .collect();
     Ok(Some(format!("{:40}\t{}", path_and_parent(p), branches)))
 }
 
 pub fn branchstat(p: &PathBuf) -> Result<Option<String>> {
-    // ahead-behind
     let outputs = vec![ahead_behind(p)?, modified(p)?, status(p)?, untracked(p)?]
         .iter()
         .filter(|&x| x.is_some())
@@ -147,15 +145,4 @@ pub fn needs_attention(p: &PathBuf) -> Result<Option<String>> {
 // List each repo found
 pub fn list(p: &PathBuf) -> Result<Option<String>> {
     Ok(Some(p.display().to_string()))
-}
-
-// Get every repo from subdirs of `dir`
-pub fn get_repos(dir: &PathBuf) -> Result<Vec<PathBuf>> {
-    let mut repos: Vec<PathBuf> = read_dir(dir)?
-        .filter_map(|d| d.ok())
-        .map(|d| d.path())
-        .filter(|d| is_git_repo(d))
-        .collect();
-    repos.sort();
-    Ok(repos)
 }
