@@ -1,12 +1,11 @@
 use std::fs::read_dir;
 use std::path::PathBuf;
 use std::thread;
+use anyhow::*;
 
 use shellexpand::tilde;
 
 mod git;
-
-type Result<T> = ::std::result::Result<T, Box<dyn ::std::error::Error>>;
 
 const USAGE: &str = "usage: repoutil stat|fetch|list|unclean";
 
@@ -85,7 +84,7 @@ fn get_dirs_from_config() -> Result<Vec<PathBuf>> {
             .map(|x| PathBuf::from(tilde(x).to_string()))
             .collect())
     } else {
-        Err("No ~/.repoutilrc, or passed dirs".into())
+        Err(anyhow!("No ~/.repoutilrc, or passed dirs"))
     }
 }
 
