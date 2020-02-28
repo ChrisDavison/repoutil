@@ -11,3 +11,4 @@ description = "Wrapper around my common git commands"
 
 [dependencies]
 shellexpand = "1.0"
+anyhow = "1.0"

@@ -1,4 +1,4 @@
-use super::Result;
+use anyhow::*;
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -102,12 +102,6 @@ fn untracked(p: &PathBuf) -> Result<Option<String>> {
     }
 }
 
-fn path_and_parent(p: &PathBuf) -> String {
-    let parent = p.parent().unwrap().file_stem().unwrap().to_string_lossy();
-    let dir = p.file_stem().unwrap().to_string_lossy();
-    format!("{}/{}", parent, dir)
-}
-
 pub fn branches(p: &PathBuf) -> Result<Option<String>> {
     let branches: String = command_output(p, &["branch"])?
         .iter()
@@ -115,7 +109,11 @@ pub fn branches(p: &PathBuf) -> Result<Option<String>> {
         .filter(|x| x.starts_with('*')).
         map(|x| &x[2..])
         .collect();
-    Ok(Some(format!("{:40}\t{}", path_and_parent(p), branches)))
+    let parentpath = p.parent().context("No parent for dir")?;
+    let parentname = parentpath.file_stem().context("No stem for parent")?.to_string_lossy();
+    let dirname = p.file_stem().context("No stem for dir")?.to_string_lossy();
+    let dirstr = format!("{}/{}", parentname, dirname);
+    Ok(Some(format!("{:40}\t{}", dirstr, branches)))
 }
 
 pub fn branchstat(p: &PathBuf) -> Result<Option<String>> {
