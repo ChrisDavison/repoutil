@@ -24,11 +24,9 @@ fn command_output(dir: &PathBuf, args: &[&str]) -> Result<Vec<String>> {
 // Fetch all branches of a git repo
 pub fn fetch(p: &PathBuf) -> Result<Option<String>> {
     let out_lines = command_output(p, &["fetch", "--all"])?;
-    let status: String = out_lines[1..].iter().cloned().collect();
-    if status.is_empty() {
-        Ok(None)
-    } else {
-        Ok(Some(format!("{}\n{}\n", p.display(), status)))
+    match out_lines.get(1..) {
+        Some(lines) => Ok(Some(format!("{}\n{}", p.display(), lines.join("")))),
+        None => Ok(None),
     }
 }
 
@@ -106,11 +104,14 @@ pub fn branches(p: &PathBuf) -> Result<Option<String>> {
     let branches: String = command_output(p, &["branch"])?
         .iter()
         .map(|x| x.trim())
-        .filter(|x| x.starts_with('*')).
-        map(|x| &x[2..])
+        .filter(|x| x.starts_with('*'))
+        .map(|x| &x[2..])
         .collect();
     let parentpath = p.parent().context("No parent for dir")?;
-    let parentname = parentpath.file_stem().context("No stem for parent")?.to_string_lossy();
+    let parentname = parentpath
+        .file_stem()
+        .context("No stem for parent")?
+        .to_string_lossy();
     let dirname = p.file_stem().context("No stem for dir")?.to_string_lossy();
     let dirstr = format!("{}/{}", parentname, dirname);
     Ok(Some(format!("{:40}\t{}", dirstr, branches)))
@@ -127,7 +128,7 @@ pub fn branchstat(p: &PathBuf) -> Result<Option<String>> {
     if outputs.is_empty() {
         Ok(None)
     } else {
-        let out = format!("{}\n{}\n", p.display().to_string(), outputs);
+        let out = format!("{}{}", p.display().to_string(), outputs);
         Ok(Some(out))
     }
 }
