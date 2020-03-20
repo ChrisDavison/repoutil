@@ -128,7 +128,7 @@ pub fn branchstat(p: &PathBuf) -> Result<Option<String>> {
     if outputs.is_empty() {
         Ok(None)
     } else {
-        let out = format!("{}{}", p.display().to_string(), outputs);
+        let out = format!("{:40} | {}", p.display().to_string(), outputs);
         Ok(Some(out))
     }
 }

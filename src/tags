@@ -4,13 +4,18 @@
 !_TAG_PROGRAM_NAME	Exuberant Ctags	//
 !_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
 !_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+USAGE	main.rs	/^const USAGE: &str = "usage: repoutil stat|fetch|list|unclean";$/;"	c
 ahead_behind	git.rs	/^fn ahead_behind(p: &PathBuf) -> Result<Option<String>> {$/;"	f
 branches	git.rs	/^pub fn branches(p: &PathBuf) -> Result<Option<String>> {$/;"	f
 branchstat	git.rs	/^pub fn branchstat(p: &PathBuf) -> Result<Option<String>> {$/;"	f
 command_output	git.rs	/^fn command_output(dir: &PathBuf, args: &[&str]) -> Result<Vec<String>> {$/;"	f
 fetch	git.rs	/^pub fn fetch(p: &PathBuf) -> Result<Option<String>> {$/;"	f
+get_dirs_from_config	main.rs	/^fn get_dirs_from_config() -> Result<Vec<PathBuf>> {$/;"	f
+get_repos	main.rs	/^fn get_repos(dir: &PathBuf) -> Result<Vec<PathBuf>> {$/;"	f
+git	main.rs	/^mod git;$/;"	M
 is_git_repo	git.rs	/^pub fn is_git_repo(p: &PathBuf) -> bool {$/;"	f
 list	git.rs	/^pub fn list(p: &PathBuf) -> Result<Option<String>> {$/;"	f
+main	main.rs	/^fn main() {$/;"	f
 modified	git.rs	/^fn modified(p: &PathBuf) -> Result<Option<String>> {$/;"	f
 needs_attention	git.rs	/^pub fn needs_attention(p: &PathBuf) -> Result<Option<String>> {$/;"	f
 stat	git.rs	/^pub fn stat(p: &PathBuf) -> Result<Option<String>> {$/;"	f
