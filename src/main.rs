@@ -1,13 +1,13 @@
+use anyhow::*;
 use std::fs::read_dir;
 use std::path::PathBuf;
 use std::thread;
-use anyhow::*;
 
 use shellexpand::tilde;
 
 mod git;
 
-const USAGE: &str = "usage: repoutil stat|fetch|list|unclean";
+const USAGE: &str = "usage: repoutil stat|fetch|list|unclean|branchstat|branches";
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -60,7 +60,7 @@ fn main() {
         // and run the chosen command.
         // The handle must 'move' to take ownership of `cmd`
         let handle = thread::spawn(move || match cmd(&repo) {
-            Ok(Some(out)) => println!("{}", out),
+            Ok(Some(out)) => println!("{}", out.trim_end()),
             Err(e) => eprintln!("Repo {}: {}", repo.display(), e),
             _ => (),
         });
