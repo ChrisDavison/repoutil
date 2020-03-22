@@ -4,7 +4,7 @@
 !_TAG_PROGRAM_NAME	Exuberant Ctags	//
 !_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
 !_TAG_PROGRAM_VERSION	5.9~svn20110310	//
-USAGE	main.rs	/^const USAGE: &str = "usage: repoutil stat|fetch|list|unclean";$/;"	c
+USAGE	main.rs	/^const USAGE: &str = "usage: repoutil stat|fetch|list|unclean|branchstat|branches";$/;"	c
 ahead_behind	git.rs	/^fn ahead_behind(p: &PathBuf) -> Result<Option<String>> {$/;"	f
 branches	git.rs	/^pub fn branches(p: &PathBuf) -> Result<Option<String>> {$/;"	f
 branchstat	git.rs	/^pub fn branchstat(p: &PathBuf) -> Result<Option<String>> {$/;"	f
