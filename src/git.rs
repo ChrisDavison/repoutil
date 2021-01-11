@@ -1,4 +1,5 @@
 use anyhow::*;
+use shellexpand::tilde;
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -24,8 +25,13 @@ fn command_output(dir: &PathBuf, args: &[&str]) -> Result<Vec<String>> {
 // Fetch all branches of a git repo
 pub fn fetch(p: &PathBuf) -> Result<Option<String>> {
     let out_lines = command_output(p, &["fetch", "--all"])?;
+    let home = tilde("~").to_string();
     match out_lines.get(1..) {
-        Some(lines) => Ok(Some(format!("{}\n{}", p.display(), lines.join("")))),
+        Some(lines) => {
+            let p = p.display().to_string().clone();
+            let p = p.trim_start_matches(&home).clone();
+            Ok(Some(format!("~{}\n{}", p, lines.join(""))))
+        }
         None => Ok(None),
     }
 }
