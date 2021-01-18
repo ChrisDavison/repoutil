@@ -27,10 +27,10 @@ pub fn fetch(p: &PathBuf) -> Result<Option<String>> {
     let out_lines = command_output(p, &["fetch", "--all"])?;
     let home = tilde("~").to_string();
     match out_lines.get(1..) {
-        Some(lines) => {
+        Some(_lines) => {
             let p = p.display().to_string().clone();
             let p = p.trim_start_matches(&home).clone();
-            Ok(Some(format!("~{}\n{}", p, lines.join(""))))
+            Ok(Some(format!("~{}\n", p)))
         }
         None => Ok(None),
     }
