@@ -4,29 +4,55 @@ use std::path::PathBuf;
 use std::thread;
 
 use shellexpand::tilde;
+use structopt::StructOpt;
 
 mod git;
+
+#[derive(StructOpt, Debug)]
+#[structopt(name = "repoutil")]
+struct Opts {
+    #[structopt(subcommand)]
+    cmd: Repoutil,
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(about = "manage multiple git repos")]
+enum Repoutil {
+    /// Show short status
+    #[structopt(alias = "s")]
+    Stat,
+    /// Fetch upstream changes
+    #[structopt(alias = "f")]
+    Fetch,
+    /// List repos that would be operated on
+    #[structopt(alias = "l")]
+    List,
+    /// List repos with local changes
+    #[structopt(alias = "u")]
+    Unclean,
+    /// List short status of all branches
+    #[structopt(alias = "b")]
+    Branchstat,
+    /// List all branches
+    Branches,
+}
 
 const USAGE: &str = "usage: repoutil stat|fetch|list|unclean|branchstat|branches";
 
 fn main() {
+    let opts = Opts::from_args();
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.is_empty() {
         eprintln!("{}", USAGE);
         return;
     }
-    let cmd = match args[0].as_ref() {
-        "fetch" | "f" => git::fetch,
-        "stat" | "s" => git::stat,
-        "list" | "l" => git::list,
-        "unclean" | "u" => git::needs_attention,
-        "branchstat" | "b" => git::branchstat,
-        "branches" => git::branches,
-        _ => {
-            eprintln!("Command `{}` not valid.\n", args[0]);
-            eprintln!("{}", USAGE);
-            return;
-        }
+    let cmd = match opts.cmd {
+        Repoutil::Fetch => git::fetch,
+        Repoutil::Stat => git::stat,
+        Repoutil::List => git::list,
+        Repoutil::Unclean => git::needs_attention,
+        Repoutil::Branchstat => git::branchstat,
+        Repoutil::Branches => git::branches,
     };
     let dirs = match get_dirs_from_config() {
         Ok(d) => d,
