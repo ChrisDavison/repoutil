@@ -4,12 +4,13 @@ use std::path::PathBuf;
 use std::thread;
 
 use shellexpand::tilde;
+use structopt::clap::AppSettings;
 use structopt::StructOpt;
 
 mod git;
 
 #[derive(StructOpt, Debug)]
-#[structopt(name = "repoutil")]
+#[structopt(name = "repoutil", setting=AppSettings::InferSubcommands)]
 struct Opts {
     #[structopt(subcommand)]
     cmd: Repoutil,
