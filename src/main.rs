@@ -42,11 +42,6 @@ const USAGE: &str = "usage: repoutil stat|fetch|list|unclean|branchstat|branches
 
 fn main() {
     let opts = Opts::from_args();
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    if args.is_empty() {
-        eprintln!("{}", USAGE);
-        return;
-    }
     let cmd = match opts.cmd {
         Repoutil::Fetch => git::fetch,
         Repoutil::Stat => git::stat,
