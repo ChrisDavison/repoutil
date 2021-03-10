@@ -1,17 +1,17 @@
 use anyhow::*;
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::Command;
 
-pub fn is_git_repo(p: &PathBuf) -> bool {
-    let mut p = p.clone();
+pub fn is_git_repo(p: &Path) -> bool {
+    let mut p = p.to_path_buf();
     p.push(".git");
     p.exists()
 }
 
 // Run a git command and return the lines of the output
-fn command_output(dir: &PathBuf, args: &[&str]) -> Result<Vec<String>> {
+fn command_output(dir: &Path, args: &[&str]) -> Result<Vec<String>> {
     let out = Command::new("git")
-        .current_dir(dir.clone())
+        .current_dir(dir.to_path_buf())
         .args(args)
         .output()?;
     Ok(std::str::from_utf8(&out.stdout)?
@@ -21,13 +21,13 @@ fn command_output(dir: &PathBuf, args: &[&str]) -> Result<Vec<String>> {
 }
 
 // Fetch all branches of a git repo
-pub fn fetch(p: &PathBuf) -> Result<Option<String>> {
+pub fn fetch(p: &Path) -> Result<Option<String>> {
     command_output(p, &["fetch", "--all"])?;
     Ok(None)
 }
 
 // Get the short status (ahead, behind, and modified files) of a repo
-pub fn stat(p: &PathBuf) -> Result<Option<String>> {
+pub fn stat(p: &Path) -> Result<Option<String>> {
     let out_lines = command_output(p, &["status", "-s", "-b"])?;
     if out_lines.is_empty() {
         Ok(None)
@@ -45,7 +45,7 @@ pub fn stat(p: &PathBuf) -> Result<Option<String>> {
     }
 }
 
-fn ahead_behind(p: &PathBuf) -> Result<Option<String>> {
+fn ahead_behind(p: &Path) -> Result<Option<String>> {
     let response: String = command_output(
         p,
         &[
@@ -68,7 +68,7 @@ fn ahead_behind(p: &PathBuf) -> Result<Option<String>> {
     }
 }
 
-fn modified(p: &PathBuf) -> Result<Option<String>> {
+fn modified(p: &Path) -> Result<Option<String>> {
     let modified = command_output(p, &["diff", "--shortstat"])?.join("\n");
     if modified.contains("changed") {
         let num = modified.trim_start().split(' ').collect::<Vec<&str>>()[0];
@@ -78,7 +78,7 @@ fn modified(p: &PathBuf) -> Result<Option<String>> {
     }
 }
 
-fn status(p: &PathBuf) -> Result<Option<String>> {
+fn status(p: &Path) -> Result<Option<String>> {
     let response = command_output(p, &["diff", "--stat", "--cached"])?;
     if !response.is_empty() {
         Ok(Some(format!("Staged {}", response.len())))
@@ -87,7 +87,7 @@ fn status(p: &PathBuf) -> Result<Option<String>> {
     }
 }
 
-fn untracked(p: &PathBuf) -> Result<Option<String>> {
+fn untracked(p: &Path) -> Result<Option<String>> {
     let untracked = command_output(p, &["ls-files", "--others", "--exclude-standard"])?;
     if !untracked.is_empty() {
         Ok(Some(format!("Untracked {}", untracked.len())))
@@ -96,7 +96,7 @@ fn untracked(p: &PathBuf) -> Result<Option<String>> {
     }
 }
 
-pub fn branches(p: &PathBuf) -> Result<Option<String>> {
+pub fn branches(p: &Path) -> Result<Option<String>> {
     let branches: String = command_output(p, &["branch"])?
         .iter()
         .map(|x| x.trim())
@@ -113,7 +113,7 @@ pub fn branches(p: &PathBuf) -> Result<Option<String>> {
     Ok(Some(format!("{:40}\t{}", dirstr, branches)))
 }
 
-pub fn branchstat(p: &PathBuf) -> Result<Option<String>> {
+pub fn branchstat(p: &Path) -> Result<Option<String>> {
     let outputs = vec![ahead_behind(p)?, modified(p)?, status(p)?, untracked(p)?]
         .iter()
         .filter(|&x| x.is_some())
@@ -130,7 +130,7 @@ pub fn branchstat(p: &PathBuf) -> Result<Option<String>> {
 }
 
 // Get the name of any repo with local or remote changes
-pub fn needs_attention(p: &PathBuf) -> Result<Option<String>> {
+pub fn needs_attention(p: &Path) -> Result<Option<String>> {
     match stat(p) {
         Ok(Some(_)) => Ok(Some(p.display().to_string())),
         _ => Ok(None),
@@ -138,6 +138,6 @@ pub fn needs_attention(p: &PathBuf) -> Result<Option<String>> {
 }
 
 // List each repo found
-pub fn list(p: &PathBuf) -> Result<Option<String>> {
+pub fn list(p: &Path) -> Result<Option<String>> {
     Ok(Some(p.display().to_string()))
 }

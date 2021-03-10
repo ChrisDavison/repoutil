@@ -1,6 +1,6 @@
 use anyhow::*;
 use std::fs::read_dir;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::thread;
 
 use shellexpand::tilde;
@@ -111,7 +111,7 @@ fn get_dirs_from_config() -> Result<Vec<PathBuf>> {
 }
 
 // Get every repo from subdirs of `dir`
-fn get_repos(dir: &PathBuf) -> Result<Vec<PathBuf>> {
+fn get_repos(dir: &Path) -> Result<Vec<PathBuf>> {
     let mut repos: Vec<PathBuf> = read_dir(dir)?
         .filter_map(|d| d.ok())
         .map(|d| d.path())
