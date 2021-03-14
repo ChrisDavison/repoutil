@@ -1,4 +1,5 @@
-use anyhow::*;
+use anyhow::{anyhow, Result};
+use rayon::prelude::*;
 use std::path::Path;
 use std::process::Command;
 
@@ -36,7 +37,11 @@ pub fn stat(p: &Path) -> Result<Option<String>> {
         Ok(Some(format!("{}\n{}\n", p.display(), out_lines.join("\n"))))
     } else {
         // We aren't ahead or behind etc, but may have local uncommitted changes
-        let status: Vec<String> = out_lines.iter().skip(1).map(|x| x.to_string()).collect();
+        let status: Vec<String> = out_lines
+            .par_iter()
+            .skip(1)
+            .map(|x| x.to_string())
+            .collect();
         if status.is_empty() {
             Ok(None)
         } else {
@@ -54,7 +59,7 @@ fn ahead_behind(p: &Path) -> Result<Option<String>> {
             "refs/heads",
         ],
     )?
-    .iter()
+    .par_iter()
     .map(|x| x.trim_matches('\'').trim())
     .filter(|x| {
         let splits: Vec<&str> = x.split(' ').collect();
@@ -98,24 +103,27 @@ fn untracked(p: &Path) -> Result<Option<String>> {
 
 pub fn branches(p: &Path) -> Result<Option<String>> {
     let branches: String = command_output(p, &["branch"])?
-        .iter()
+        .par_iter()
         .map(|x| x.trim())
         .filter(|x| x.starts_with('*'))
         .map(|x| &x[2..])
         .collect();
-    let parentpath = p.parent().context("No parent for dir")?;
+    let parentpath = p.parent().ok_or(anyhow!("No parent for dir"))?;
     let parentname = parentpath
         .file_stem()
-        .context("No stem for parent")?
+        .ok_or(anyhow!("No stem for parent"))?
         .to_string_lossy();
-    let dirname = p.file_stem().context("No stem for dir")?.to_string_lossy();
+    let dirname = p
+        .file_stem()
+        .ok_or(anyhow!("No stem for dir"))?
+        .to_string_lossy();
     let dirstr = format!("{}/{}", parentname, dirname);
     Ok(Some(format!("{:40}\t{}", dirstr, branches)))
 }
 
 pub fn branchstat(p: &Path) -> Result<Option<String>> {
     let outputs = vec![ahead_behind(p)?, modified(p)?, status(p)?, untracked(p)?]
-        .iter()
+        .par_iter()
         .filter(|&x| x.is_some())
         .map(|x| x.as_ref().unwrap().as_str())
         .collect::<Vec<&str>>()
