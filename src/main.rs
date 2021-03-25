@@ -99,14 +99,14 @@ fn main() {
 fn get_dirs_from_config() -> Result<Vec<PathBuf>> {
     let repoutil_config = tilde("~/.repoutilrc").to_string();
     let p = std::path::Path::new(&repoutil_config);
-    if p.exists() {
+    if !p.exists() {
+        Err(anyhow!("No ~/.repoutilrc, or passed dirs"))
+    } else {
         let contents = std::fs::read_to_string(p)?;
         Ok(contents
             .lines()
             .map(|x| PathBuf::from(tilde(x).to_string()))
             .collect())
-    } else {
-        Err(anyhow!("No ~/.repoutilrc, or passed dirs"))
     }
 }
 
