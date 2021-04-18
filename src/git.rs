@@ -23,7 +23,7 @@ fn command_output(dir: &Path, args: &[&str]) -> Result<Vec<String>> {
 
 // Fetch all branches of a git repo
 pub fn fetch(p: &Path) -> Result<Option<String>> {
-    command_output(p, &["fetch", "--all"])?;
+    command_output(p, &["fetch", "--all", "--tags", "--prune"])?;
     Ok(None)
 }
 
