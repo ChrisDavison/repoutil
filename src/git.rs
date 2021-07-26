@@ -77,7 +77,7 @@ fn modified(p: &Path) -> Result<Option<String>> {
     let modified = command_output(p, &["diff", "--shortstat"])?.join("\n");
     if modified.contains("changed") {
         let num = modified.trim_start().split(' ').collect::<Vec<&str>>()[0];
-        Ok(Some(format!("Modified {}", num)))
+        Ok(Some(format!("{}±", num)))
     } else {
         Ok(None)
     }
@@ -95,7 +95,7 @@ fn status(p: &Path) -> Result<Option<String>> {
 fn untracked(p: &Path) -> Result<Option<String>> {
     let untracked = command_output(p, &["ls-files", "--others", "--exclude-standard"])?;
     if !untracked.is_empty() {
-        Ok(Some(format!("Untracked {}", untracked.len())))
+        Ok(Some(format!("{}?", untracked.len())))
     } else {
         Ok(None)
     }
@@ -132,7 +132,7 @@ pub fn branchstat(p: &Path) -> Result<Option<String>> {
     if outputs.is_empty() {
         Ok(None)
     } else {
-        let out = format!("{:40} | {}", p.display().to_string(), outputs);
+        let out = format!("{:20} | {}", p.file_name().unwrap().to_string_lossy(), outputs);
         Ok(Some(out))
     }
 }
