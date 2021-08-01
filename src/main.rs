@@ -82,17 +82,23 @@ fn main() {
         // and run the chosen command.
         // The handle must 'move' to take ownership of `cmd`
         let handle = thread::spawn(move || match cmd(&repo) {
-            Ok(Some(out)) => println!("{}", out.trim_end()),
-            Err(e) => eprintln!("Repo {}: {}", repo.display(), e),
-            _ => (),
+            Ok(Some(out)) => format!("{}", out.trim_end()),
+            Err(e) => format!("ERR Repo {}: {}", repo.display(), e),
+            _ => String::new(),
         });
         handles.push(handle);
     }
 
+    let mut messages = Vec::new();
     for h in handles {
-        if let Err(e) = h.join() {
-            eprintln!("A child git command panic'd: {:?}", e);
+        match h.join() {
+            Ok(msg) => messages.push(msg),
+            Err(e) => eprintln!("A child git command panic'd: {:?}", e),
         }
+    }
+    messages.sort();
+    for msg in messages.iter().filter(|msg| !msg.is_empty()) {
+        println!("{}", msg)
     }
 }
 

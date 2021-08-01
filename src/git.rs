@@ -132,7 +132,11 @@ pub fn branchstat(p: &Path) -> Result<Option<String>> {
     if outputs.is_empty() {
         Ok(None)
     } else {
-        let out = format!("{:20} | {}", p.file_name().unwrap().to_string_lossy(), outputs);
+        let out = format!(
+            "{:20} | {}",
+            p.file_name().unwrap().to_string_lossy(),
+            outputs
+        );
         Ok(Some(out))
     }
 }
