@@ -11,10 +11,7 @@ pub fn is_git_repo(p: &Path) -> bool {
 
 // Run a git command and return the lines of the output
 fn command_output(dir: &Path, args: &[&str]) -> Result<Vec<String>> {
-    let out = Command::new("git")
-        .current_dir(dir.to_path_buf())
-        .args(args)
-        .output()?;
+    let out = Command::new("git").current_dir(dir).args(args).output()?;
     Ok(std::str::from_utf8(&out.stdout)?
         .lines()
         .map(|x| x.to_string())
@@ -108,14 +105,14 @@ pub fn branches(p: &Path) -> Result<Option<String>> {
         .filter(|x| x.starts_with('*'))
         .map(|x| &x[2..])
         .collect();
-    let parentpath = p.parent().ok_or(anyhow!("No parent for dir"))?;
+    let parentpath = p.parent().ok_or_else(|| anyhow!("No parent for dir"))?;
     let parentname = parentpath
         .file_stem()
-        .ok_or(anyhow!("No stem for parent"))?
+        .ok_or_else(|| anyhow!("No stem for parent"))?
         .to_string_lossy();
     let dirname = p
         .file_stem()
-        .ok_or(anyhow!("No stem for dir"))?
+        .ok_or_else(|| anyhow!("No stem for dir"))?
         .to_string_lossy();
     let dirstr = format!("{}/{}", parentname, dirname);
     Ok(Some(format!("{:40}\t{}", dirstr, branches)))
