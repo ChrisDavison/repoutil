@@ -58,10 +58,7 @@ fn ahead_behind(p: &Path) -> Result<Option<String>> {
     )?
     .par_iter()
     .map(|x| x.trim_matches('\'').trim())
-    .filter(|x| {
-        let splits: Vec<&str> = x.split(' ').collect();
-        splits.get(1).is_some()
-    })
+    .filter(|x| x.split(' ').nth(1).is_some())
     .collect();
     if !response.is_empty() {
         Ok(Some(response))
