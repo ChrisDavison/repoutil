@@ -19,6 +19,9 @@ struct Opts {
 #[derive(StructOpt, Debug)]
 #[structopt(about = "manage multiple git repos")]
 enum Repoutil {
+    /// Push commits
+    #[structopt(alias = "p")]
+    Push,
     /// Show short status
     #[structopt(alias = "s")]
     Stat,
@@ -43,6 +46,7 @@ const USAGE: &str = "usage: repoutil stat|fetch|list|unclean|branchstat|branches
 fn main() {
     let opts = Opts::from_args();
     let cmd = match opts.cmd {
+        Repoutil::Push => git::push,
         Repoutil::Fetch => git::fetch,
         Repoutil::Stat => git::stat,
         Repoutil::List => git::list,
