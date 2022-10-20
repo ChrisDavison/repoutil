@@ -7,7 +7,7 @@ use shellexpand::tilde;
 
 mod git;
 
-const USAGE: &str = "repoutil v0.21.0
+const USAGE: &str = "repoutil vVERSION_FROM_ENV
 Operations on multiple git repos
 
 usage:
@@ -21,7 +21,8 @@ commands:
     u|unclean         List repos with local changes
     bs|branchstat     List short status of all branches
     b|branches        List all branches
-    h|help            Display this help message";
+    h|help            Display this help message
+    v|version         Show version";
 
 fn main() {
     let args: Vec<_> = std::env::args().skip(1).collect();
@@ -34,13 +35,19 @@ fn main() {
         "u" | "unclean" => git::needs_attention,
         "bs" | "branchstat" => git::branchstat,
         "b" | "branches" => git::branches,
+        "v" | "version" => {
+            println!("repoutil v{}", env!("CARGO_PKG_VERSION"));
+            std::process::exit(0);
+        }
         "h" | "help" | "" => {
-            println!("{USAGE}");
-            std::process::exit(1);
+            let u = USAGE.replace("VERSION_FROM_ENV", env!("CARGO_PKG_VERSION"));
+            println!("{u}");
+            std::process::exit(0);
         }
         unrecognised => {
-            println!("Unrecognised command: {unrecognised}");
-            println!("{USAGE}");
+            println!("Unrecognised command: {unrecognised}\n");
+            let u = USAGE.replace("VERSION_FROM_ENV", env!("CARGO_PKG_VERSION"));
+            println!("{u}");
             std::process::exit(1);
         }
     };
