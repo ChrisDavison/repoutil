@@ -7,11 +7,13 @@ use shellexpand::tilde;
 
 mod git;
 
-const USAGE: &str = "usage: repoutil stat|fetch|list|unclean|branchstat|branches|help";
-const LONG_USAGE: &str = "usage:
+const USAGE: &str = "repoutil v0.21.0
+Operations on multiple git repos
+
+usage:
     repoutil <command>
 
-Commands:
+commands:
     p|push            Push commits
     f|fetch           Fetch commits and tags
     s|stat            Show short status
@@ -19,18 +21,12 @@ Commands:
     u|unclean         List repos with local changes
     bs|branchstat     List short status of all branches
     b|branches        List all branches
-    h|help            Display this help message
-";
+    h|help            Display this help message";
 
 fn main() {
     let args: Vec<_> = std::env::args().skip(1).collect();
 
-    // if args.is_empty() {
-    //     println!(@
-    //     std::process::exit(0);
-    // }
-
-    let cmd = match args.get(0).unwrap_or(&String::from("NO COMMAND")).as_ref() {
+    let cmd = match args.get(0).unwrap_or(&String::new()).as_ref() {
         "p" | "push" => git::push,
         "f" | "fetch" => git::fetch,
         "s" | "stat" => git::stat,
@@ -38,11 +34,12 @@ fn main() {
         "u" | "unclean" => git::needs_attention,
         "bs" | "branchstat" => git::branchstat,
         "b" | "branches" => git::branches,
-        "h" | "help" => {
-            println!("{LONG_USAGE}");
+        "h" | "help" | "" => {
+            println!("{USAGE}");
             std::process::exit(1);
         }
-        _ => {
+        unrecognised => {
+            println!("Unrecognised command: {unrecognised}");
             println!("{USAGE}");
             std::process::exit(1);
         }
