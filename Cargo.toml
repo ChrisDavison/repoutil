@@ -1,6 +1,6 @@
 [package]
 name = "repoutil"
-version = "0.20.0"
+version = "0.21.0"
 authors = ["Chris Davison <c.jr.davison@gmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -12,5 +12,3 @@ description = "Wrapper around my common git commands"
 [dependencies]
 shellexpand = "1.0"
 anyhow = "1.0"
-structopt = "0.3"
-rayon = "1.5.0"

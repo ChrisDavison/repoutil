@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Result};
-use rayon::prelude::*;
 use std::path::Path;
 use std::process::Command;
 
@@ -41,11 +40,7 @@ pub fn stat(p: &Path) -> Result<Option<String>> {
         Ok(Some(format!("{}\n{}\n", p.display(), out_lines.join("\n"))))
     } else {
         // We aren't ahead or behind etc, but may have local uncommitted changes
-        let status: Vec<String> = out_lines
-            .par_iter()
-            .skip(1)
-            .map(|x| x.to_string())
-            .collect();
+        let status: Vec<String> = out_lines.iter().skip(1).map(|x| x.to_string()).collect();
         if status.is_empty() {
             Ok(None)
         } else {
@@ -63,7 +58,7 @@ fn ahead_behind(p: &Path) -> Result<Option<String>> {
             "refs/heads",
         ],
     )?
-    .par_iter()
+    .iter()
     .map(|x| x.trim_matches('\'').trim())
     .filter(|x| x.split(' ').nth(1).is_some())
     .collect();
@@ -104,7 +99,7 @@ fn untracked(p: &Path) -> Result<Option<String>> {
 
 pub fn branches(p: &Path) -> Result<Option<String>> {
     let branches: String = command_output(p, &["branch"])?
-        .par_iter()
+        .iter()
         .map(|x| x.trim())
         .filter(|x| x.starts_with('*'))
         .map(|x| &x[2..])
@@ -124,7 +119,7 @@ pub fn branches(p: &Path) -> Result<Option<String>> {
 
 pub fn branchstat(p: &Path) -> Result<Option<String>> {
     let outputs = vec![ahead_behind(p)?, modified(p)?, status(p)?, untracked(p)?]
-        .par_iter()
+        .iter()
         .filter(|&x| x.is_some())
         .map(|x| x.as_ref().unwrap().as_str())
         .collect::<Vec<&str>>()
