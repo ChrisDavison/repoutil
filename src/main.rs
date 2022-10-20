@@ -4,56 +4,50 @@ use std::path::{Path, PathBuf};
 use std::thread;
 
 use shellexpand::tilde;
-use structopt::clap::AppSettings;
-use structopt::StructOpt;
 
 mod git;
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = "repoutil", setting=AppSettings::InferSubcommands)]
-struct Opts {
-    #[structopt(subcommand)]
-    cmd: Repoutil,
-}
+const USAGE: &str = "usage: repoutil stat|fetch|list|unclean|branchstat|branches|help";
+const LONG_USAGE: &str = "usage:
+    repoutil <command>
 
-#[derive(StructOpt, Debug)]
-#[structopt(about = "manage multiple git repos")]
-enum Repoutil {
-    /// Push commits
-    #[structopt(alias = "p")]
-    Push,
-    /// Show short status
-    #[structopt(alias = "s")]
-    Stat,
-    /// Fetch upstream changes
-    #[structopt(alias = "f")]
-    Fetch,
-    /// List repos that would be operated on
-    #[structopt(alias = "l")]
-    List,
-    /// List repos with local changes
-    #[structopt(alias = "u")]
-    Unclean,
-    /// List short status of all branches
-    #[structopt(alias = "b")]
-    Branchstat,
-    /// List all branches
-    Branches,
-}
-
-const USAGE: &str = "usage: repoutil stat|fetch|list|unclean|branchstat|branches";
+Commands:
+    p|push            Push commits
+    f|fetch           Fetch commits and tags
+    s|stat            Show short status
+    l|list            List tracked repos
+    u|unclean         List repos with local changes
+    bs|branchstat     List short status of all branches
+    b|branches        List all branches
+    h|help            Display this help message
+";
 
 fn main() {
-    let opts = Opts::from_args();
-    let cmd = match opts.cmd {
-        Repoutil::Push => git::push,
-        Repoutil::Fetch => git::fetch,
-        Repoutil::Stat => git::stat,
-        Repoutil::List => git::list,
-        Repoutil::Unclean => git::needs_attention,
-        Repoutil::Branchstat => git::branchstat,
-        Repoutil::Branches => git::branches,
+    let args: Vec<_> = std::env::args().skip(1).collect();
+
+    // if args.is_empty() {
+    //     println!(@
+    //     std::process::exit(0);
+    // }
+
+    let cmd = match args.get(0).unwrap_or(&String::from("NO COMMAND")).as_ref() {
+        "p" | "push" => git::push,
+        "f" | "fetch" => git::fetch,
+        "s" | "stat" => git::stat,
+        "l" | "list" => git::list,
+        "u" | "unclean" => git::needs_attention,
+        "bs" | "branchstat" => git::branchstat,
+        "b" | "branches" => git::branches,
+        "h" | "help" => {
+            println!("{LONG_USAGE}");
+            std::process::exit(1);
+        }
+        _ => {
+            println!("{USAGE}");
+            std::process::exit(1);
+        }
     };
+
     let dirs = match get_dirs_from_config() {
         Ok(d) => d,
         Err(e) => {
