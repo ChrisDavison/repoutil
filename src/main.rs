@@ -84,7 +84,7 @@ fn main() {
         // and run the chosen command.
         // The handle must 'move' to take ownership of `cmd`
         let handle = thread::spawn(move || match cmd(&repo) {
-            Ok(Some(out)) => out.trim_end().into(),
+            Ok(Some(out)) => out.into(),
             Err(e) => format!("ERR Repo {}: {}", repo.display(), e),
             _ => String::new(),
         });
