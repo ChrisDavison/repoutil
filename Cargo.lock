@@ -10,7 +10,7 @@ checksum = "7825f6833612eb2414095684fcf6c635becf3ce97fe48cf6421321e93bfbd53c"
 
 [[package]]
 name = "repoutil"
-version = "0.21.1"
+version = "0.21.2"
 dependencies = [
  "anyhow",
  "shellexpand",
