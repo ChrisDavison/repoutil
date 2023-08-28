@@ -11,7 +11,7 @@ const USAGE: &str = "repoutil vVERSION_FROM_ENV
 Operations on multiple git repos
 
 usage:
-    repoutil <command>
+    repoutil <command> [-j|--json]
 
 commands:
     p|push            Push commits
@@ -23,6 +23,8 @@ commands:
     b|branches        List all branches
     h|help            Display this help message
     v|version         Show version";
+
+static mut AS_JSON: bool = false;
 
 fn main() {
     let args: Vec<_> = std::env::args().skip(1).collect();
@@ -51,6 +53,10 @@ fn main() {
             std::process::exit(1);
         }
     };
+
+    unsafe {
+        AS_JSON = args.iter().skip(1).any(|a| a == "-j" || a == "--json");
+    }
 
     let dirs = match get_dirs_from_config() {
         Ok(d) => d,
@@ -99,8 +105,15 @@ fn main() {
         }
     }
     messages.sort();
-    for msg in messages.iter().filter(|msg| !msg.is_empty()) {
-        println!("{}", msg)
+    unsafe {
+        let messages = messages.iter().filter(|msg| !msg.is_empty());
+        if AS_JSON {
+            println!("{{\"items\": [{}]}}", messages.map(|x| x.to_string()).collect::<Vec<String>>().join(","));
+        } else {
+            for msg in messages {
+                println!("{}", msg)
+            }
+        }
     }
 }
 
