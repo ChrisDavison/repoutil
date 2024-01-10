@@ -29,7 +29,7 @@ static mut AS_JSON: bool = false;
 fn main() {
     let args: Vec<_> = std::env::args().skip(1).collect();
 
-    let cmd = match args.get(0).unwrap_or(&String::new()).as_ref() {
+    let cmd = match args.first().unwrap_or(&String::new()).as_ref() {
         "p" | "push" => git::push,
         "f" | "fetch" => git::fetch,
         "s" | "stat" => git::stat,
@@ -58,7 +58,7 @@ fn main() {
         AS_JSON = args.iter().skip(1).any(|a| a == "-j" || a == "--json");
     }
 
-    let dirs = match get_dirs_from_config() {
+    let (inc, exc) = match get_dirs_from_config() {
         Ok(d) => d,
         Err(e) => {
             eprintln!("{}", e);
@@ -67,7 +67,7 @@ fn main() {
         }
     };
     let mut all_repos = Vec::new();
-    for dir in dirs {
+    for dir in inc {
         if git::is_git_repo(&dir) {
             all_repos.push(dir);
         } else {
@@ -78,7 +78,7 @@ fn main() {
                     continue;
                 }
             };
-            all_repos.extend(repos);
+            all_repos.extend(repos.iter().filter(|r| !exc.contains(r)).cloned());
         }
     }
     all_repos.sort();
@@ -90,7 +90,7 @@ fn main() {
         // and run the chosen command.
         // The handle must 'move' to take ownership of `cmd`
         let handle = thread::spawn(move || match cmd(&repo) {
-            Ok(Some(out)) => out.into(),
+            Ok(Some(out)) => out,
             Err(e) => format!("ERR Repo {}: {}", repo.display(), e),
             _ => String::new(),
         });
@@ -108,7 +108,13 @@ fn main() {
     unsafe {
         let messages = messages.iter().filter(|msg| !msg.is_empty());
         if AS_JSON {
-            println!("{{\"items\": [{}]}}", messages.map(|x| x.to_string()).collect::<Vec<String>>().join(","));
+            println!(
+                "{{\"items\": [{}]}}",
+                messages
+                    .map(|x| x.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",")
+            );
         } else {
             for msg in messages {
                 println!("{}", msg)
@@ -117,17 +123,22 @@ fn main() {
     }
 }
 
-fn get_dirs_from_config() -> Result<Vec<PathBuf>> {
+fn get_dirs_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
     let repoutil_config = tilde("~/.repoutilrc").to_string();
     let p = std::path::Path::new(&repoutil_config);
     if !p.exists() {
         Err(anyhow!("No ~/.repoutilrc, or passed dirs"))
     } else {
         let contents = std::fs::read_to_string(p)?;
-        Ok(contents
-            .lines()
-            .map(|x| PathBuf::from(tilde(x).to_string()))
-            .collect())
+        let (inc, exc): (Vec<_>, Vec<_>) = contents.lines().partition(|p| !p.starts_with('!'));
+        Ok((
+            inc.iter()
+                .map(|x| PathBuf::from(tilde(x).to_string()))
+                .collect(),
+            exc.iter()
+                .map(|x| PathBuf::from(tilde(&x[1..]).to_string()))
+                .collect(),
+        ))
     }
 }
 
