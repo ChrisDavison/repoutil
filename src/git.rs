@@ -14,9 +14,9 @@ pub fn is_git_repo(p: &Path) -> bool {
 fn command_output(dir: &Path, args: &[&str]) -> Result<Vec<String>> {
     let out = Command::new("git").current_dir(dir).args(args).output()?;
     Ok(std::str::from_utf8(&out.stdout)?
-       .lines()
-       .map(|x| x.to_string())
-       .collect())
+        .lines()
+        .map(|x| x.to_string())
+        .collect())
 }
 
 // Fetch all branches of a git repo
@@ -55,15 +55,15 @@ fn ahead_behind(p: &Path) -> Result<Option<String>> {
     let response: String = command_output(
         p,
         &[
-        "for-each-ref",
-        "--format='%(refname:short) %(upstream:track)'",
-        "refs/heads",
+            "for-each-ref",
+            "--format='%(refname:short) %(upstream:track)'",
+            "refs/heads",
         ],
-        )?
-        .iter()
-        .map(|x| x.trim_matches('\'').trim())
-        .filter(|x| x.split(' ').nth(1).is_some())
-        .collect();
+    )?
+    .iter()
+    .map(|x| x.trim_matches('\'').trim())
+    .filter(|x| x.split(' ').nth(1).is_some())
+    .collect();
     if !response.is_empty() {
         Ok(Some(response))
     } else {
@@ -116,13 +116,14 @@ pub fn branches(p: &Path) -> Result<Option<String>> {
         .ok_or_else(|| anyhow!("No stem for dir"))?
         .to_string_lossy();
     let dirstr = format!("{}/{}", parentname, dirname);
-    let mut output = String::new();
+    let output: String;
     unsafe {
         if AS_JSON {
-            output = format!("{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
-                             dirstr, branches);
-        }
-        else {
+            output = format!(
+                "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
+                dirstr, branches
+            );
+        } else {
             output = format!("{:40}\t{}", dirstr, branches);
         }
     }
@@ -130,7 +131,7 @@ pub fn branches(p: &Path) -> Result<Option<String>> {
 }
 
 pub fn branchstat(p: &Path) -> Result<Option<String>> {
-    let outputs = vec![ahead_behind(p)?, modified(p)?, status(p)?, untracked(p)?]
+    let outputs = [ahead_behind(p)?, modified(p)?, status(p)?, untracked(p)?]
         .iter()
         .filter(|&x| x.is_some())
         .map(|x| x.as_ref().unwrap().as_str())
@@ -140,19 +141,20 @@ pub fn branchstat(p: &Path) -> Result<Option<String>> {
     if outputs.is_empty() {
         Ok(None)
     } else {
-        let mut out = String::new();
+        let out: String;
         unsafe {
             if AS_JSON {
-               out = format!("{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
-                                  p.file_name().unwrap().to_string_lossy(),
-                                  outputs);
+                out = format!(
+                    "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
+                    p.file_name().unwrap().to_string_lossy(),
+                    outputs
+                );
             } else {
-               out = format!(
+                out = format!(
                     "{:20} | {}",
                     p.file_name().unwrap().to_string_lossy(),
                     outputs
-                    );
-
+                );
             }
         }
         Ok(Some(out))
