@@ -2,67 +2,66 @@ use anyhow::{anyhow, Result};
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
 use std::thread;
+use structopt::StructOpt;
 
 use shellexpand::tilde;
 
 mod git;
 
-const USAGE: &str = "repoutil vVERSION_FROM_ENV
-Operations on multiple git repos
+#[derive(Debug, StructOpt)]
+#[structopt(name = "repoutil", about = "Operations on multiple git repos")]
+struct Opts {
+    #[structopt(subcommand)]
+    command: OptCommand,
+    /// Use JSON rather than plaintext output
+    #[structopt(long, short)]
+    json: bool,
+}
 
-usage:
-    repoutil <command> [-j|--json]
-
-commands:
-    p|push            Push commits
-    f|fetch           Fetch commits and tags
-    s|stat            Show short status
-    l|list            List tracked repos
-    u|unclean         List repos with local changes
-    bs|branchstat     List short status of all branches
-    b|branches        List all branches
-    h|help            Display this help message
-    v|version         Show version";
-
-static mut AS_JSON: bool = false;
+#[derive(Debug, StructOpt)]
+enum OptCommand {
+    /// Push commits
+    #[structopt(alias = "p")]
+    Push,
+    /// Fetch commits and tags
+    #[structopt(alias = "f")]
+    Fetch,
+    /// Show short status
+    #[structopt(alias = "s")]
+    Stat,
+    /// List tracked repos
+    #[structopt(alias = "l")]
+    List,
+    /// List repos with local changes
+    #[structopt(alias = "u")]
+    Unclean,
+    /// List short status of all branches
+    #[structopt(alias = "bs")]
+    Branchstat,
+    /// List all branches
+    #[structopt(alias = "b")]
+    Branches,
+}
 
 fn main() {
-    let args: Vec<_> = std::env::args().skip(1).collect();
+    let opts = Opts::from_args();
 
-    let cmd = match args.first().unwrap_or(&String::new()).as_ref() {
-        "p" | "push" => git::push,
-        "f" | "fetch" => git::fetch,
-        "s" | "stat" => git::stat,
-        "l" | "list" => git::list,
-        "u" | "unclean" => git::needs_attention,
-        "bs" | "branchstat" => git::branchstat,
-        "b" | "branches" => git::branches,
-        "v" | "version" => {
-            println!("repoutil v{}", env!("CARGO_PKG_VERSION"));
-            std::process::exit(0);
-        }
-        "h" | "help" | "" => {
-            let u = USAGE.replace("VERSION_FROM_ENV", env!("CARGO_PKG_VERSION"));
-            println!("{u}");
-            std::process::exit(0);
-        }
-        unrecognised => {
-            println!("Unrecognised command: {unrecognised}\n");
-            let u = USAGE.replace("VERSION_FROM_ENV", env!("CARGO_PKG_VERSION"));
-            println!("{u}");
-            std::process::exit(1);
-        }
+    let json = opts.json;
+
+    let cmd = match opts.command {
+        OptCommand::Push => git::push,
+        OptCommand::Fetch => git::fetch,
+        OptCommand::Stat => git::stat,
+        OptCommand::List => git::list,
+        OptCommand::Unclean => git::needs_attention,
+        OptCommand::Branchstat => git::branchstat,
+        OptCommand::Branches => git::branches,
     };
-
-    unsafe {
-        AS_JSON = args.iter().skip(1).any(|a| a == "-j" || a == "--json");
-    }
 
     let (inc, exc) = match get_dirs_from_config() {
         Ok(d) => d,
         Err(e) => {
             eprintln!("{}", e);
-            eprintln!("{}", USAGE);
             return;
         }
     };
@@ -89,7 +88,7 @@ fn main() {
         // Spawn a thread for each repo
         // and run the chosen command.
         // The handle must 'move' to take ownership of `cmd`
-        let handle = thread::spawn(move || match cmd(&repo) {
+        let handle = thread::spawn(move || match cmd(&repo, json) {
             Ok(Some(out)) => out,
             Err(e) => format!("ERR Repo {}: {}", repo.display(), e),
             _ => String::new(),
@@ -105,20 +104,18 @@ fn main() {
         }
     }
     messages.sort();
-    unsafe {
-        let messages = messages.iter().filter(|msg| !msg.is_empty());
-        if AS_JSON {
-            println!(
-                "{{\"items\": [{}]}}",
-                messages
-                    .map(|x| x.to_string())
-                    .collect::<Vec<String>>()
-                    .join(",")
-            );
-        } else {
-            for msg in messages {
-                println!("{}", msg)
-            }
+    let messages = messages.iter().filter(|msg| !msg.is_empty());
+    if json {
+        println!(
+            "{{\"items\": [{}]}}",
+            messages
+                .map(|x| x.to_string())
+                .collect::<Vec<String>>()
+                .join(",")
+        );
+    } else {
+        for msg in messages {
+            println!("{}", msg)
         }
     }
 }
