@@ -2,8 +2,6 @@ use anyhow::{anyhow, Result};
 use std::path::Path;
 use std::process::Command;
 
-use super::AS_JSON;
-
 pub fn is_git_repo(p: &Path) -> bool {
     let mut p = p.to_path_buf();
     p.push(".git");
@@ -11,8 +9,11 @@ pub fn is_git_repo(p: &Path) -> bool {
 }
 
 // Run a git command and return the lines of the output
-fn command_output(dir: &Path, args: &[&str]) -> Result<Vec<String>> {
-    let out = Command::new("git").current_dir(dir).args(args).output()?;
+fn command_output(dir: &Path, command: &str) -> Result<Vec<String>> {
+    let out = Command::new("git")
+        .current_dir(dir)
+        .args(command.split(' '))
+        .output()?;
     Ok(std::str::from_utf8(&out.stdout)?
         .lines()
         .map(|x| x.to_string())
@@ -20,21 +21,20 @@ fn command_output(dir: &Path, args: &[&str]) -> Result<Vec<String>> {
 }
 
 // Fetch all branches of a git repo
-pub fn push(p: &Path) -> Result<Option<String>> {
-    command_output(p, &["push", "--tags"])?;
-    command_output(p, &["push"])?;
-    Ok(None)
+pub fn push(p: &Path, _: bool) -> Result<Option<String>> {
+    // We don't care about the output
+    command_output(p, "push --all --tags").map(|_| None)
 }
 
 // Fetch all branches of a git repo
-pub fn fetch(p: &Path) -> Result<Option<String>> {
-    command_output(p, &["fetch", "--all", "--tags", "--prune"])?;
-    Ok(None)
+pub fn fetch(p: &Path, _: bool) -> Result<Option<String>> {
+    // We don't care about the output
+    command_output(p, "fetch --all --tags --prune").map(|_| None)
 }
 
 // Get the short status (ahead, behind, and modified files) of a repo
-pub fn stat(p: &Path) -> Result<Option<String>> {
-    let out_lines = command_output(p, &["status", "-s", "-b"])?;
+pub fn stat(p: &Path, _: bool) -> Result<Option<String>> {
+    let out_lines = command_output(p, "status -s -b")?;
     if out_lines.is_empty() {
         Ok(None)
     } else if out_lines[0].ends_with(']') {
@@ -42,11 +42,11 @@ pub fn stat(p: &Path) -> Result<Option<String>> {
         Ok(Some(format!("{}\n{}\n", p.display(), out_lines.join("\n"))))
     } else {
         // We aren't ahead or behind etc, but may have local uncommitted changes
-        let status: Vec<String> = out_lines.iter().skip(1).map(|x| x.to_string()).collect();
+        let status: String = out_lines.iter().skip(1).map(|x| x.to_string()).collect::<Vec<String>>().join("\n");
         if status.is_empty() {
             Ok(None)
         } else {
-            Ok(Some(format!("{}\n{}\n", p.display(), status.join("\n"))))
+            Ok(Some(format!("{}\n{}\n", p.display(), status)))
         }
     }
 }
@@ -54,25 +54,21 @@ pub fn stat(p: &Path) -> Result<Option<String>> {
 fn ahead_behind(p: &Path) -> Result<Option<String>> {
     let response: String = command_output(
         p,
-        &[
-            "for-each-ref",
-            "--format='%(refname:short) %(upstream:track)'",
-            "refs/heads",
-        ],
+        "for-each-ref --format='%(refname:short) %(upstream:track)' refs/heads",
     )?
     .iter()
     .map(|x| x.trim_matches('\'').trim())
     .filter(|x| x.split(' ').nth(1).is_some())
     .collect();
-    if !response.is_empty() {
-        Ok(Some(response))
+    Ok(if response.is_empty() {
+        None
     } else {
-        Ok(None)
-    }
+        Some(response)
+    })
 }
 
 fn modified(p: &Path) -> Result<Option<String>> {
-    let modified = command_output(p, &["diff", "--shortstat"])?.join("\n");
+    let modified = command_output(p, "diff --shortstat")?.join("\n");
     if modified.contains("changed") {
         let num = modified.trim_start().split(' ').collect::<Vec<&str>>()[0];
         Ok(Some(format!("{}±", num)))
@@ -82,7 +78,7 @@ fn modified(p: &Path) -> Result<Option<String>> {
 }
 
 fn status(p: &Path) -> Result<Option<String>> {
-    let response = command_output(p, &["diff", "--stat", "--cached"])?;
+    let response = command_output(p, "diff --stat --cached")?;
     if !response.is_empty() {
         Ok(Some(format!("Staged {}", response.len())))
     } else {
@@ -91,16 +87,16 @@ fn status(p: &Path) -> Result<Option<String>> {
 }
 
 fn untracked(p: &Path) -> Result<Option<String>> {
-    let untracked = command_output(p, &["ls-files", "--others", "--exclude-standard"])?;
-    if !untracked.is_empty() {
-        Ok(Some(format!("{}?", untracked.len())))
+    let untracked = command_output(p, "ls-files --others --exclude-standard")?;
+    Ok(if untracked.is_empty() {
+        None
     } else {
-        Ok(None)
-    }
+        Some(format!("{}?", untracked.len()))
+    })
 }
 
-pub fn branches(p: &Path) -> Result<Option<String>> {
-    let branches: String = command_output(p, &["branch"])?
+pub fn branches(p: &Path, as_json: bool) -> Result<Option<String>> {
+    let branches: String = command_output(p, "branch")?
         .iter()
         .map(|x| x.trim())
         .filter(|x| x.starts_with('*'))
@@ -116,21 +112,17 @@ pub fn branches(p: &Path) -> Result<Option<String>> {
         .ok_or_else(|| anyhow!("No stem for dir"))?
         .to_string_lossy();
     let dirstr = format!("{}/{}", parentname, dirname);
-    let output: String;
-    unsafe {
-        if AS_JSON {
-            output = format!(
-                "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
-                dirstr, branches
-            );
-        } else {
-            output = format!("{:40}\t{}", dirstr, branches);
-        }
-    }
-    Ok(Some(output))
+    Ok(Some(if as_json {
+        format!(
+            "{{\"path\": \"{}\", \"subtitle\": \"{}\"}}",
+            dirstr, branches
+        )
+    } else {
+        format!("{:40}\t{}", dirstr, branches)
+    }))
 }
 
-pub fn branchstat(p: &Path) -> Result<Option<String>> {
+pub fn branchstat(p: &Path, as_json: bool) -> Result<Option<String>> {
     let outputs = [ahead_behind(p)?, modified(p)?, status(p)?, untracked(p)?]
         .iter()
         .filter(|&x| x.is_some())
@@ -141,35 +133,40 @@ pub fn branchstat(p: &Path) -> Result<Option<String>> {
     if outputs.is_empty() {
         Ok(None)
     } else {
-        let out: String;
-        unsafe {
-            if AS_JSON {
-                out = format!(
-                    "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
-                    p.file_name().unwrap().to_string_lossy(),
-                    outputs
-                );
-            } else {
-                out = format!(
-                    "{:20} | {}",
-                    p.file_name().unwrap().to_string_lossy(),
-                    outputs
-                );
-            }
-        }
-        Ok(Some(out))
+        Ok(Some(if as_json {
+            format!(
+                "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
+                p.file_name().unwrap().to_string_lossy(),
+                outputs
+            )
+        } else {
+            format!(
+                "{:20} | {}",
+                p.file_name().unwrap().to_string_lossy(),
+                outputs
+            )
+        }))
     }
 }
 
 // Get the name of any repo with local or remote changes
-pub fn needs_attention(p: &Path) -> Result<Option<String>> {
-    match stat(p) {
-        Ok(Some(_)) => Ok(Some(p.display().to_string())),
-        _ => Ok(None),
-    }
+pub fn needs_attention(p: &Path, as_json: bool) -> Result<Option<String>> {
+    let pstr = p.display().to_string();
+    stat(p, as_json).map(|_| {
+        Some(if as_json {
+            format!("{{\"path\": {pstr}}}")
+        } else {
+            pstr
+        })
+    })
 }
 
 // List each repo found
-pub fn list(p: &Path) -> Result<Option<String>> {
-    Ok(Some(p.display().to_string()))
+pub fn list(p: &Path, as_json: bool) -> Result<Option<String>> {
+    let pstr = p.display().to_string();
+    Ok(Some(if as_json {
+        format!("{{\"path\": {pstr}}}")
+    } else {
+        pstr
+    }))
 }
