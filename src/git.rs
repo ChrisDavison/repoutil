@@ -136,13 +136,13 @@ pub fn branchstat(p: &Path, as_json: bool) -> Result<Option<String>> {
         Ok(Some(if as_json {
             format!(
                 "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
-                p.file_name().unwrap().to_string_lossy(),
+                p.display().to_string(),
                 outputs
             )
         } else {
             format!(
-                "{:20} | {}",
-                p.file_name().unwrap().to_string_lossy(),
+                "{:40} | {}",
+                p.display().to_string(),
                 outputs
             )
         }))

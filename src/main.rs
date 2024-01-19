@@ -43,7 +43,37 @@ enum OptCommand {
     Branches,
 }
 
-fn main() {
+fn common_substring<T: ToString>(ss: &[T]) -> String {
+    let mut idx = 0;
+    loop {
+        if !index_is_common(ss, idx) {
+            break;
+        }
+        idx += 1;
+    }
+    ss[0].to_string().chars().take(idx).collect()
+}
+
+fn index_is_common<T: ToString>(ss: &[T], idx: usize) -> bool {
+    let first = ss[0].to_string().chars().nth(idx).unwrap();
+    ss.iter().all(|w| w.to_string().chars().nth(idx).unwrap() == first)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::common_substring;
+
+    #[test]
+    fn test_common_substring() {
+        assert_eq!(common_substring(&["aaa", "aab", "aac"]), "aa");
+        assert_eq!(common_substring(&["/home/cdavison/code", "/home/cdavison/code/recipes", "/home/cdavison/strathclyde"]), "/home/cdavison/");
+    }
+}
+
+
+type Command = fn(&Path, bool) -> Result<Option<String>>;
+
+fn parse_args() -> (Command, bool) {
     let opts = Opts::from_args();
 
     let json = opts.json;
@@ -57,44 +87,25 @@ fn main() {
         OptCommand::Branchstat => git::branchstat,
         OptCommand::Branches => git::branches,
     };
+    (cmd, json)
+}
 
-    let (inc, exc) = match get_dirs_from_config() {
-        Ok(d) => d,
-        Err(e) => {
-            eprintln!("{}", e);
-            return;
-        }
-    };
-    let mut all_repos = Vec::new();
-    for dir in inc {
-        if git::is_git_repo(&dir) {
-            all_repos.push(dir);
-        } else {
-            let repos = match get_repos(&dir) {
-                Ok(r) => r,
-                Err(e) => {
-                    eprintln!("Couldn't get repos from '{:?}': '{}'\n", dir, e);
-                    continue;
-                }
-            };
-            all_repos.extend(repos.iter().filter(|r| !exc.contains(r)).cloned());
-        }
-    }
-    all_repos.sort();
-    all_repos.dedup();
+fn main() {
+    let (cmd, json) = parse_args();
+    
+    let all_repos = get_repos_from_config().expect("Couldn't get repos");
 
-    let mut handles = Vec::new();
-    for repo in all_repos {
+    let handles = all_repos.clone().into_iter().map(|repo| {
+    // for repo in all_repos {
         // Spawn a thread for each repo
         // and run the chosen command.
         // The handle must 'move' to take ownership of `cmd`
-        let handle = thread::spawn(move || match cmd(&repo, json) {
+        thread::spawn(move || match cmd(&repo, json) {
             Ok(Some(out)) => out,
             Err(e) => format!("ERR Repo {}: {}", repo.display(), e),
             _ => String::new(),
-        });
-        handles.push(handle);
-    }
+        })
+    });
 
     let mut messages = Vec::new();
     for h in handles {
@@ -114,8 +125,10 @@ fn main() {
                 .join(",")
         );
     } else {
+        let pathstrs: Vec<String> = all_repos.iter().map(|x| x.clone().display().to_string()).collect();
+        let common = common_substring(&pathstrs);
         for msg in messages {
-            println!("{}", msg)
+            println!("{}", msg.replace(&common, ""))
         }
     }
 }
@@ -123,24 +136,25 @@ fn main() {
 fn get_dirs_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
     let repoutil_config = tilde("~/.repoutilrc").to_string();
     let p = std::path::Path::new(&repoutil_config);
+
     if !p.exists() {
-        Err(anyhow!("No ~/.repoutilrc, or passed dirs"))
-    } else {
-        let contents = std::fs::read_to_string(p)?;
-        let (inc, exc): (Vec<_>, Vec<_>) = contents.lines().partition(|p| !p.starts_with('!'));
-        Ok((
-            inc.iter()
-                .map(|x| PathBuf::from(tilde(x).to_string()))
-                .collect(),
-            exc.iter()
-                .map(|x| PathBuf::from(tilde(&x[1..]).to_string()))
-                .collect(),
-        ))
-    }
+        return Err(anyhow!("No ~/.repoutilrc, or passed dirs"));
+    } 
+
+    let contents = std::fs::read_to_string(p)?;
+    let (inc, exc): (Vec<_>, Vec<_>) = contents.lines().partition(|p| !p.starts_with('!'));
+    Ok((
+        inc.iter()
+            .map(|x| PathBuf::from(tilde(x).to_string()))
+            .collect(),
+        exc.iter()
+            .map(|x| PathBuf::from(tilde(&x[1..]).to_string()))
+            .collect(),
+    ))
 }
 
 // Get every repo from subdirs of `dir`
-fn get_repos(dir: &Path) -> Result<Vec<PathBuf>> {
+fn get_repos_from_dir(dir: &Path) -> Result<Vec<PathBuf>> {
     let mut repos: Vec<PathBuf> = read_dir(dir)?
         .filter_map(|d| d.ok())
         .map(|d| d.path())
@@ -148,4 +162,26 @@ fn get_repos(dir: &Path) -> Result<Vec<PathBuf>> {
         .collect();
     repos.sort();
     Ok(repos)
+}
+
+fn get_repos_from_config() -> Result<Vec<PathBuf>> {
+    let (inc, exc) = get_dirs_from_config()?;
+    let mut all_repos = Vec::new();
+    for dir in inc {
+        if git::is_git_repo(&dir) {
+            all_repos.push(dir);
+        } else {
+            let repos = match get_repos_from_dir(&dir) {
+                Ok(r) => r,
+                Err(e) => {
+                    eprintln!("Couldn't get repos from '{:?}': '{}'\n", dir, e);
+                    continue;
+                }
+            };
+            all_repos.extend(repos.iter().filter(|r| !exc.contains(r)).cloned());
+        }
+    }
+    all_repos.sort();
+    all_repos.dedup();
+    Ok(all_repos)
 }
