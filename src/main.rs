@@ -1,8 +1,8 @@
 use anyhow::{anyhow, Result};
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
-use std::thread;
 use structopt::StructOpt;
+use rayon::prelude::*;
 
 use shellexpand::tilde;
 
@@ -95,31 +95,19 @@ fn main() {
     
     let all_repos = get_repos_from_config().expect("Couldn't get repos");
 
-    let handles = all_repos.clone().into_iter().map(|repo| {
-    // for repo in all_repos {
-        // Spawn a thread for each repo
-        // and run the chosen command.
-        // The handle must 'move' to take ownership of `cmd`
-        thread::spawn(move || match cmd(&repo, json) {
+    let mut messages: Vec<_> = all_repos.par_iter().map(|repo| {
+    match cmd(repo, json) {
             Ok(Some(out)) => out,
             Err(e) => format!("ERR Repo {}: {}", repo.display(), e),
             _ => String::new(),
-        })
-    });
-
-    let mut messages = Vec::new();
-    for h in handles {
-        match h.join() {
-            Ok(msg) => messages.push(msg),
-            Err(e) => eprintln!("A child git command panic'd: {:?}", e),
         }
-    }
+    }).collect(); 
+
     messages.sort();
-    let messages = messages.iter().filter(|msg| !msg.is_empty());
     if json {
         println!(
             "{{\"items\": [{}]}}",
-            messages
+            messages.iter()
                 .map(|x| x.to_string())
                 .collect::<Vec<String>>()
                 .join(",")
