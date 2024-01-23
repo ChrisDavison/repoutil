@@ -104,10 +104,11 @@ fn main() {
     }).collect(); 
 
     messages.sort();
+    let messages = messages.iter().filter(|msg| !msg.is_empty());
     if json {
         println!(
             "{{\"items\": [{}]}}",
-            messages.iter()
+            messages
                 .map(|x| x.to_string())
                 .collect::<Vec<String>>()
                 .join(",")
