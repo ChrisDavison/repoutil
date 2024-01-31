@@ -130,16 +130,17 @@ fn get_dirs_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
         return Err(anyhow!("No ~/.repoutilrc, or passed dirs"));
     } 
 
-    let contents = std::fs::read_to_string(p)?;
-    let (inc, exc): (Vec<_>, Vec<_>) = contents.lines().partition(|p| !p.starts_with('!'));
-    Ok((
-        inc.iter()
-            .map(|x| PathBuf::from(tilde(x).to_string()))
-            .collect(),
-        exc.iter()
-            .map(|x| PathBuf::from(tilde(&x[1..]).to_string()))
-            .collect(),
-    ))
+    let mut includes = Vec::new();
+    let mut excludes = Vec::new();
+    for line in std::fs::read_to_string(p)?.lines() {
+        if line.starts_with('!') {
+            // Strip 'exclusion-marking' ! from start of path, and add to excludes list
+            excludes.push(PathBuf::from(tilde(&line[1..]).to_string()));
+        } else {
+            includes.push(PathBuf::from(tilde(&line).to_string()));
+        }
+    }
+    Ok((includes, excludes))
 }
 
 // Get every repo from subdirs of `dir`
