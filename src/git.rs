@@ -71,16 +71,14 @@ pub fn stat(p: &Path, as_json: bool) -> Result<Option<String>> {
 fn ahead_behind(p: &Path) -> Result<Option<String>> {
     let response: String = command_output(
         p,
-        "for-each-ref --format='%(refname:short) %(upstream:track)' refs/heads",
-    )?
-    .iter()
-    .map(|x| x.trim_matches('\'').trim())
-    .filter(|x| x.split(' ').nth(1).is_some())
-    .collect();
+        "status --porcelain --ahead-behind -b",
+    )?.into_iter().next().filter(|x| x.contains("[")).unwrap_or(String::new());
     Ok(if response.is_empty() {
         None
     } else {
-        Some(response)
+        let start = response.find('[').unwrap();
+        let end = response.find(']').unwrap();
+        Some(response[start + 1..end].to_string())
     })
 }
 
