@@ -33,20 +33,37 @@ pub fn fetch(p: &Path, _: bool) -> Result<Option<String>> {
 }
 
 // Get the short status (ahead, behind, and modified files) of a repo
-pub fn stat(p: &Path, _: bool) -> Result<Option<String>> {
+pub fn stat(p: &Path, as_json: bool) -> Result<Option<String>> {
     let out_lines = command_output(p, "status -s -b")?;
     if out_lines.is_empty() {
         Ok(None)
     } else if out_lines[0].ends_with(']') {
         // We have an 'ahead', 'behind' or similar, so free to return the status early
-        Ok(Some(format!("{}\n{}\n", p.display(), out_lines.join("\n"))))
+        if as_json {
+            Ok(Some(format!(
+            "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
+            p.display(),
+            out_lines[0]
+            )))
+        } else {
+            Ok(Some(format!("{}\n{}\n", p.display(), out_lines.join("\n"))))
+        }
     } else {
         // We aren't ahead or behind etc, but may have local uncommitted changes
         let status: String = out_lines.iter().skip(1).map(|x| x.to_string()).collect::<Vec<String>>().join("\n");
         if status.is_empty() {
             Ok(None)
         } else {
-            Ok(Some(format!("{}\n{}\n", p.display(), status)))
+            if as_json {
+                Ok(Some(format!(
+                    "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
+                    p.display(),
+                    status
+                ))
+                )
+            } else {
+                Ok(Some(format!("{}\n{}\n", p.display(), status)))
+            }
         }
     }
 }
@@ -135,9 +152,10 @@ pub fn branchstat(p: &Path, as_json: bool) -> Result<Option<String>> {
     } else {
         Ok(Some(if as_json {
             format!(
-                "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
+                "{{\"title\": \"{}\", \"subtitle\": \"{}\", \"arg\": \"{}\"}}",
                 p.display(),
-                outputs
+                outputs,
+                p.display(),
             )
         } else {
             format!(
