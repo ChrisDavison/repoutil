@@ -20,19 +20,21 @@ fn command_output(dir: &Path, command: &str) -> Result<Vec<String>> {
         .collect())
 }
 
-// Fetch all branches of a git repo
+/// Push all changes to the branch
+///
+/// On success, returns nothing.
 pub fn push(p: &Path, _: bool) -> Result<Option<String>> {
     // We don't care about the output
     command_output(p, "push --all --tags").map(|_| None)
 }
 
-// Fetch all branches of a git repo
+/// Fetch all branches of a git repo
 pub fn fetch(p: &Path, _: bool) -> Result<Option<String>> {
     // We don't care about the output
     command_output(p, "fetch --all --tags --prune").map(|_| None)
 }
 
-// Get the short status (ahead, behind, and modified files) of a repo
+/// Get the short status (ahead, behind, and modified files) of a repo
 pub fn stat(p: &Path, as_json: bool) -> Result<Option<String>> {
     let out_lines = command_output(p, "status -s -b")?;
     if out_lines.is_empty() {
@@ -110,6 +112,7 @@ fn untracked(p: &Path) -> Result<Option<String>> {
     })
 }
 
+/// Get a list of branches for the given git path
 pub fn branches(p: &Path, as_json: bool) -> Result<Option<String>> {
     let branches: String = command_output(p, "branch")?
         .iter()
@@ -137,6 +140,7 @@ pub fn branches(p: &Path, as_json: bool) -> Result<Option<String>> {
     }))
 }
 
+/// Get the status _of each branch_
 pub fn branchstat(p: &Path, as_json: bool) -> Result<Option<String>> {
     let outputs = [ahead_behind(p)?, modified(p)?, status(p)?, untracked(p)?]
         .iter()
@@ -165,7 +169,7 @@ pub fn branchstat(p: &Path, as_json: bool) -> Result<Option<String>> {
     }
 }
 
-// Get the name of any repo with local or remote changes
+/// Get the name of any repo with local or remote changes
 pub fn needs_attention(p: &Path, as_json: bool) -> Result<Option<String>> {
     let pstr = p.display().to_string();
     stat(p, as_json).map(|_| {
@@ -177,7 +181,7 @@ pub fn needs_attention(p: &Path, as_json: bool) -> Result<Option<String>> {
     })
 }
 
-// List each repo found
+/// List each repo found
 pub fn list(p: &Path, as_json: bool) -> Result<Option<String>> {
     let pstr = p.display().to_string();
     Ok(Some(if as_json {
