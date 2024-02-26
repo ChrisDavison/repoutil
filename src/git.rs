@@ -161,7 +161,7 @@ pub fn branchstat(p: &Path, as_json: bool) -> Result<Option<String>> {
             )
         } else {
             format!(
-                "{:40} | {}",
+                "{:50} | {}",
                 p.display(),
                 outputs
             )
