@@ -114,8 +114,11 @@ fn main() {
                 .join(",")
         );
     } else {
-        let pathstrs: Vec<String> = all_repos.iter().map(|x| x.clone().display().to_string()).collect();
-        let common = common_substring(&pathstrs);
+        let messages = messages
+                .map(|x| x.to_string())
+                .collect::<Vec<String>>();
+        let common = common_substring(&messages);
+        dbg!(&common);
         for msg in messages {
             println!("{}", msg.replace(&common, ""))
         }
