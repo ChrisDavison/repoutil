@@ -118,7 +118,6 @@ fn main() {
                 .map(|x| x.to_string())
                 .collect::<Vec<String>>();
         let common = common_substring(&messages);
-        dbg!(&common);
         for msg in messages {
             println!("{}", msg.replace(&common, ""))
         }
