@@ -43,38 +43,41 @@ pub fn stat(p: &Path, as_json: bool) -> Result<Option<String>> {
         // We have an 'ahead', 'behind' or similar, so free to return the status early
         if as_json {
             Ok(Some(format!(
-            "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
-            p.display(),
-            out_lines[0]
+                "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
+                p.display(),
+                out_lines[0]
             )))
         } else {
             Ok(Some(format!("{}\n{}\n", p.display(), out_lines.join("\n"))))
         }
     } else {
         // We aren't ahead or behind etc, but may have local uncommitted changes
-        let status: String = out_lines.iter().skip(1).map(|x| x.to_string()).collect::<Vec<String>>().join("\n");
+        let status: String = out_lines
+            .iter()
+            .skip(1)
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>()
+            .join("\n");
         if status.is_empty() {
             Ok(None)
+        } else if as_json {
+            Ok(Some(format!(
+                "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
+                p.display(),
+                status
+            )))
         } else {
-            if as_json {
-                Ok(Some(format!(
-                    "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
-                    p.display(),
-                    status
-                ))
-                )
-            } else {
-                Ok(Some(format!("{}\n{}\n", p.display(), status)))
-            }
+            Ok(Some(format!("{}\n{}\n", p.display(), status)))
         }
     }
 }
 
 fn ahead_behind(p: &Path) -> Result<Option<String>> {
-    let response: String = command_output(
-        p,
-        "status --porcelain --ahead-behind -b",
-    )?.into_iter().next().filter(|x| x.contains("[")).unwrap_or(String::new());
+    let response: String = command_output(p, "status --porcelain --ahead-behind -b")?
+        .into_iter()
+        .next()
+        .filter(|x| x.contains('['))
+        .unwrap_or(String::new());
     Ok(if response.is_empty() {
         None
     } else {
@@ -160,11 +163,7 @@ pub fn branchstat(p: &Path, as_json: bool) -> Result<Option<String>> {
                 p.display(),
             )
         } else {
-            format!(
-                "{:50} | {}",
-                p.display(),
-                outputs
-            )
+            format!("{:50} | {}", p.display(), outputs)
         }))
     }
 }
