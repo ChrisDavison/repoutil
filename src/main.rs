@@ -1,8 +1,8 @@
 use anyhow::{anyhow, Result};
+use rayon::prelude::*;
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
-use rayon::prelude::*;
 
 use shellexpand::tilde;
 
@@ -45,18 +45,22 @@ enum OptCommand {
 
 fn common_substring<T: ToString>(ss: &[T]) -> String {
     let mut idx = 0;
+    let charlists = ss.iter().map(|x| x.to_string().chars().collect()).collect::<Vec<Vec<char>>>();
+    if charlists.is_empty() {
+        return "".to_string();
+    }
+    let first_charlist = &charlists[0];
     loop {
-        if !index_is_common(ss, idx) {
+        let first = first_charlist.iter().nth(idx);
+        if !charlists
+            .iter()
+            .all(|w| w.iter().nth(idx) == first)
+        {
             break;
         }
         idx += 1;
     }
     ss[0].to_string().chars().take(idx).collect()
-}
-
-fn index_is_common<T: ToString>(ss: &[T], idx: usize) -> bool {
-    let first = ss[0].to_string().chars().nth(idx).unwrap();
-    ss.iter().all(|w| w.to_string().chars().nth(idx).unwrap() == first)
 }
 
 #[cfg(test)]
@@ -66,10 +70,17 @@ mod tests {
     #[test]
     fn test_common_substring() {
         assert_eq!(common_substring(&["aaa", "aab", "aac"]), "aa");
-        assert_eq!(common_substring(&["/home/cdavison/code", "/home/cdavison/code/recipes", "/home/cdavison/strathclyde"]), "/home/cdavison/");
+        assert_eq!(common_substring::<&str>(&[]), "");
+        assert_eq!(
+            common_substring(&[
+                "/home/cdavison/code",
+                "/home/cdavison/code/recipes",
+                "/home/cdavison/strathclyde"
+            ]),
+            "/home/cdavison/"
+        );
     }
 }
-
 
 type Command = fn(&Path, bool) -> Result<Option<String>>;
 
@@ -92,16 +103,17 @@ fn parse_args() -> (Command, bool) {
 
 fn main() {
     let (cmd, json) = parse_args();
-    
+
     let all_repos = get_repos_from_config().expect("Couldn't get repos");
 
-    let mut messages: Vec<_> = all_repos.par_iter().map(|repo| {
-    match cmd(repo, json) {
+    let mut messages: Vec<_> = all_repos
+        .par_iter()
+        .map(|repo| match cmd(repo, json) {
             Ok(Some(out)) => out,
             Err(e) => format!("ERR Repo {}: {}", repo.display(), e),
             _ => String::new(),
-        }
-    }).collect(); 
+        })
+        .collect();
 
     messages.sort();
     let messages = messages.iter().filter(|msg| !msg.is_empty());
@@ -114,10 +126,12 @@ fn main() {
                 .join(",")
         );
     } else {
-        let messages = messages
-                .map(|x| x.to_string())
-                .collect::<Vec<String>>();
-        let common = common_substring(&messages);
+        let messages = messages.map(|x| x.to_string()).collect::<Vec<String>>();
+        let common = if messages.is_empty() {
+            String::new()
+        } else {
+            common_substring(&messages)
+        };
         for msg in messages {
             println!("{}", msg.replace(&common, ""))
         }
@@ -130,14 +144,14 @@ fn get_dirs_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
 
     if !p.exists() {
         return Err(anyhow!("No ~/.repoutilrc, or passed dirs"));
-    } 
+    }
 
     let mut includes = Vec::new();
     let mut excludes = Vec::new();
     for line in std::fs::read_to_string(p)?.lines() {
-        if line.starts_with('!') {
+        if let Some(stripped) = line.strip_prefix('!') {
             // Strip 'exclusion-marking' ! from start of path, and add to excludes list
-            excludes.push(PathBuf::from(tilde(&line[1..]).to_string()));
+            excludes.push(PathBuf::from(tilde(stripped).to_string()));
         } else {
             includes.push(PathBuf::from(tilde(&line).to_string()));
         }
