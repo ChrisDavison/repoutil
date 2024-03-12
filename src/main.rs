@@ -82,9 +82,9 @@ mod tests {
     }
 }
 
-type Command = fn(&Path, bool) -> Result<Option<String>>;
+// type Command = fn(&Path, bool) -> Result<Option<String>>;
 
-fn parse_args() -> (Command, bool) {
+fn main() {
     let opts = Opts::from_args();
 
     let json = opts.json;
@@ -98,14 +98,11 @@ fn parse_args() -> (Command, bool) {
         OptCommand::Branchstat => git::branchstat,
         OptCommand::Branches => git::branches,
     };
-    (cmd, json)
-}
-
-fn main() {
-    let (cmd, json) = parse_args();
 
     let all_repos = get_repos_from_config().expect("Couldn't get repos");
 
+    let n = all_repos.len();
+    println!("Running `{:?}` on {n} repos\n", opts.command);
     let mut messages: Vec<_> = all_repos
         .par_iter()
         .map(|repo| match cmd(repo, json) {
