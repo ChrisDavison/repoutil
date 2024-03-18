@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Result};
-use rayon::prelude::*;
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
@@ -45,17 +44,17 @@ enum OptCommand {
 
 fn common_substring<T: ToString>(ss: &[T]) -> String {
     let mut idx = 0;
-    let charlists = ss.iter().map(|x| x.to_string().chars().collect()).collect::<Vec<Vec<char>>>();
+    let charlists = ss
+        .iter()
+        .map(|x| x.to_string().chars().collect())
+        .collect::<Vec<Vec<char>>>();
     if charlists.is_empty() {
         return "".to_string();
     }
     let first_charlist = &charlists[0];
     loop {
-        let first = first_charlist.iter().nth(idx);
-        if !charlists
-            .iter()
-            .all(|w| w.iter().nth(idx) == first)
-        {
+        let first = first_charlist.get(idx);
+        if !charlists.iter().all(|w| w.get(idx) == first) {
             break;
         }
         idx += 1;
@@ -101,37 +100,28 @@ fn main() {
 
     let all_repos = get_repos_from_config().expect("Couldn't get repos");
 
-    let n = all_repos.len();
-    println!("Running `{:?}` on {n} repos\n", opts.command);
-    let mut messages: Vec<_> = all_repos
-        .par_iter()
-        .map(|repo| match cmd(repo, json) {
-            Ok(Some(out)) => out,
-            Err(e) => format!("ERR Repo {}: {}", repo.display(), e),
-            _ => String::new(),
-        })
-        .collect();
-
-    messages.sort();
-    let messages = messages.iter().filter(|msg| !msg.is_empty());
-    if json {
-        println!(
-            "{{\"items\": [{}]}}",
-            messages
-                .map(|x| x.to_string())
-                .collect::<Vec<String>>()
-                .join(",")
-        );
-    } else {
-        let messages = messages.map(|x| x.to_string()).collect::<Vec<String>>();
-        let common = if messages.is_empty() {
-            String::new()
-        } else {
-            common_substring(&messages)
-        };
-        for msg in messages {
-            println!("{}", msg.replace(&common, ""))
+    let common = common_substring(
+        &all_repos
+            .iter()
+            .map(|x| x.display().to_string())
+            .collect::<Vec<String>>(),
+    );
+    let mut outs = Vec::new();
+    for repo in all_repos {
+        match cmd(&repo, json) {
+            Ok(Some(out)) => {
+                if json {
+                    outs.push(out.replace(&common, ""));
+                } else {
+                    println!("{}", out.replace(&common, ""))
+                }
+            }
+            Ok(_) => (),
+            Err(e) => eprintln!("ERR Repo {}: {}", repo.display(), e),
         }
+    }
+    if json {
+        println!("{{\"items\": [{}]}}", outs.join(","));
     }
 }
 
