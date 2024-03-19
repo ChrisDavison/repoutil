@@ -55,7 +55,10 @@ fn common_substring<T: ToString>(ss: &[T]) -> String {
     loop {
         let first = first_charlist.get(idx);
         if !charlists.iter().all(|w| w.get(idx) == first) {
-            break;
+            let first = first_charlist.get(idx);
+            if !charlists.iter().all(|w| w.get(idx) == first) {
+                break;
+            }
         }
         idx += 1;
     }
@@ -80,8 +83,6 @@ mod tests {
         );
     }
 }
-
-// type Command = fn(&Path, bool) -> Result<Option<String>>;
 
 fn main() {
     let opts = Opts::from_args();
