@@ -22,9 +22,9 @@ enum OptCommand {
     /// Push commits
     #[structopt(alias = "p")]
     Push,
-    /// Fetch commits and tags
-    #[structopt(alias = "f")]
-    Fetch,
+    // /// Fetch commits and tags
+    // #[structopt(alias = "f")]
+    // Fetch,
     /// Show short status
     #[structopt(alias = "s")]
     Stat,
@@ -91,7 +91,7 @@ fn main() {
 
     let cmd = match opts.command {
         OptCommand::Push => git::push,
-        OptCommand::Fetch => git::fetch,
+        // OptCommand::Fetch => git::fetch,
         OptCommand::Stat => git::stat,
         OptCommand::List => git::list,
         OptCommand::Unclean => git::needs_attention,
