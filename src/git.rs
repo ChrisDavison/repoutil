@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use std::path::Path;
 use std::process::Command;
+use std::time::Instant;
 
 pub fn is_git_repo(p: &Path) -> bool {
     let mut p = p.to_path_buf();
@@ -83,36 +84,35 @@ fn ahead_behind(p: &Path) -> Result<Option<String>> {
     } else {
         let start = response.find('[').unwrap();
         let end = response.find(']').unwrap();
-        Some(response[start + 1..end].to_string())
+        Some(response[start + 1..end].replace("ahead ", "↑").replace("behind ", "↓").to_string())
     })
 }
 
 fn modified(p: &Path) -> Result<Option<String>> {
-    let modified = command_output(p, "diff --shortstat")?.join("\n");
-    if modified.contains("changed") {
-        let num = modified.trim_start().split(' ').collect::<Vec<&str>>()[0];
-        Ok(Some(format!("{}±", num)))
+    let mut modif = 0;
+    let mut untracked = 0;
+    for line in command_output(p, "status -s -b")?.into_iter().skip(1) {
+        let trimmed = line.trim_start().to_string();
+        let trimmed = if trimmed.starts_with("\u{1b}") {
+            trimmed[5..6].to_string()
+        } else {
+            trimmed
+        };
+        if trimmed == "M" {
+            modif += 1;
+        }
+        if trimmed == "?" {
+            untracked += 1;
+        }
+    }
+    let modif_str = if modif  > 0{ format!("{}±", modif) } else { String::new() };
+    let untrack_str = if untracked > 0 { format!("{}?", untracked) } else { String::new() };
+    let outstr = [modif_str, untrack_str].iter().filter(|x| !x.is_empty()).map(|x| x.to_string()).collect::<Vec<String>>().join(", ");
+    if !outstr.is_empty() {
+        Ok(Some(outstr))
     } else {
         Ok(None)
     }
-}
-
-fn status(p: &Path) -> Result<Option<String>> {
-    let response = command_output(p, "diff --stat --cached")?;
-    if !response.is_empty() {
-        Ok(Some(format!("Staged {}", response.len())))
-    } else {
-        Ok(None)
-    }
-}
-
-fn untracked(p: &Path) -> Result<Option<String>> {
-    let untracked = command_output(p, "ls-files --others --exclude-standard")?;
-    Ok(if untracked.is_empty() {
-        None
-    } else {
-        Some(format!("{}?", untracked.len()))
-    })
 }
 
 /// Get a list of branches for the given git path
@@ -145,7 +145,7 @@ pub fn branches(p: &Path, as_json: bool) -> Result<Option<String>> {
 
 /// Get the status _of each branch_
 pub fn branchstat(p: &Path, as_json: bool) -> Result<Option<String>> {
-    let outputs = [ahead_behind(p)?, modified(p)?, status(p)?, untracked(p)?]
+    let outputs = [ahead_behind(p)?, modified(p)?]
         .iter()
         .filter(|&x| x.is_some())
         .map(|x| x.as_ref().unwrap().as_str())
@@ -184,7 +184,7 @@ pub fn needs_attention(p: &Path, as_json: bool) -> Result<Option<String>> {
 pub fn list(p: &Path, as_json: bool) -> Result<Option<String>> {
     let pstr = p.display().to_string();
     Ok(Some(if as_json {
-        format!("{{\"path\": {pstr}}}")
+        format!("{{\"title\": \"{pstr}\", \"arg\": \"{pstr}\"}}")
     } else {
         pstr
     }))
