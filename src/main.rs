@@ -2,6 +2,7 @@ use anyhow::{anyhow, Result};
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
+use rayon::prelude::*;
 
 use shellexpand::tilde;
 
@@ -23,8 +24,8 @@ enum OptCommand {
     #[structopt(alias = "p")]
     Push,
     // /// Fetch commits and tags
-    // #[structopt(alias = "f")]
-    // Fetch,
+    #[structopt(alias = "f")]
+    Fetch,
     /// Show short status
     #[structopt(alias = "s")]
     Stat,
@@ -91,7 +92,7 @@ fn main() {
 
     let cmd = match opts.command {
         OptCommand::Push => git::push,
-        // OptCommand::Fetch => git::fetch,
+        OptCommand::Fetch => git::fetch,
         OptCommand::Stat => git::stat,
         OptCommand::List => git::list,
         OptCommand::Unclean => git::needs_attention,
@@ -108,17 +109,21 @@ fn main() {
             .collect::<Vec<String>>(),
     );
     let mut outs = Vec::new();
-    for repo in all_repos {
-        match cmd(&repo, json) {
-            Ok(Some(out)) => {
+    let out: Vec<_> = all_repos.par_iter().map(|repo| {
+        cmd(&repo, json)
+    }).collect();
+    for output in out {
+        match output {
+            Ok(Some(thing)) => {
+                let thing = thing.replace(&common, "");
                 if json {
-                    outs.push(out.replace(&common, ""));
+                    outs.push(thing);
                 } else {
-                    println!("{}", out.replace(&common, ""))
+                    println!("{}", thing)
                 }
             }
             Ok(_) => (),
-            Err(e) => eprintln!("ERR Repo {}: {}", repo.display(), e),
+            Err(e) => eprintln!("ERR: {}", e),
         }
     }
     if json {
