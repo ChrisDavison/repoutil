@@ -3,6 +3,7 @@ use std::fs::read_dir;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 use rayon::prelude::*;
+use indicatif::ParallelProgressIterator;
 
 use shellexpand::tilde;
 
@@ -109,7 +110,7 @@ fn main() {
             .collect::<Vec<String>>(),
     );
     let mut outs = Vec::new();
-    let out: Vec<_> = all_repos.par_iter().map(|repo| {
+    let out: Vec<_> = all_repos.par_iter().progress_count(all_repos.len() as u64).map(|repo| {
         cmd(&repo, json)
     }).collect();
     for output in out {
