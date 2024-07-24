@@ -1,13 +1,51 @@
 use anyhow::{anyhow, Result};
+use indicatif::ParallelProgressIterator;
+use rayon::prelude::*;
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
-use rayon::prelude::*;
-use indicatif::ParallelProgressIterator;
 
 use shellexpand::tilde;
 
 mod git;
+
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone)]
+pub enum GitPath {
+    Keep(PathBuf),
+    Ignore(PathBuf),
+}
+
+impl GitPath {
+    pub fn to_path_buf(&self) -> PathBuf {
+        match self {
+            GitPath::Keep(p) => p.to_path_buf(),
+            GitPath::Ignore(p) => p.to_path_buf(),
+        }
+    }
+
+    pub fn keep(&self) -> Option<PathBuf> {
+        match self {
+            GitPath::Keep(p) => Some(p.to_path_buf()),
+            GitPath::Ignore(_) => None,
+        }
+    }
+
+    pub fn ignore(&self) -> Option<PathBuf> {
+        match self {
+            GitPath::Ignore(p) => Some(p.to_path_buf()),
+            GitPath::Keep(_) => None,
+        }
+    }
+}
+
+impl std::fmt::Display for GitPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            GitPath::Keep(p) => write!(f, "{}", p.display()),
+            GitPath::Ignore(p) => write!(f, "! {}", p.display()),
+        }
+    }
+}
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "repoutil", about = "Operations on multiple git repos")]
@@ -42,6 +80,9 @@ enum OptCommand {
     /// List all branches
     #[structopt(alias = "b")]
     Branches,
+    /// List all untracked folders
+    #[structopt(alias = "un")]
+    Untracked,
 }
 
 fn common_substring<T: ToString>(ss: &[T]) -> String {
@@ -99,6 +140,7 @@ fn main() {
         OptCommand::Unclean => git::needs_attention,
         OptCommand::Branchstat => git::branchstat,
         OptCommand::Branches => git::branches,
+        OptCommand::Untracked => git::untracked,
     };
 
     let all_repos = get_repos_from_config().expect("Couldn't get repos");
@@ -106,13 +148,15 @@ fn main() {
     let common = common_substring(
         &all_repos
             .iter()
-            .map(|x| x.display().to_string())
+            .map(|x| format!("{}", x))
             .collect::<Vec<String>>(),
     );
     let mut outs = Vec::new();
-    let out: Vec<_> = all_repos.par_iter().progress_count(all_repos.len() as u64).map(|repo| {
-        cmd(&repo, json)
-    }).collect();
+    let out: Vec<_> = all_repos
+        .par_iter()
+        .progress_count(all_repos.len() as u64)
+        .map(|repo| cmd(repo, json))
+        .collect();
     for output in out {
         match output {
             Ok(Some(thing)) => {
@@ -132,7 +176,7 @@ fn main() {
     }
 }
 
-fn get_dirs_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
+fn get_dirs_from_config() -> Result<(Vec<GitPath>, Vec<GitPath>)> {
     let repoutil_config = tilde("~/.repoutilrc").to_string();
     let p = std::path::Path::new(&repoutil_config);
 
@@ -145,9 +189,9 @@ fn get_dirs_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
     for line in std::fs::read_to_string(p)?.lines() {
         if let Some(stripped) = line.strip_prefix('!') {
             // Strip 'exclusion-marking' ! from start of path, and add to excludes list
-            excludes.push(PathBuf::from(tilde(stripped).to_string()));
+            excludes.push(GitPath::Ignore(PathBuf::from(tilde(stripped).to_string())));
         } else {
-            includes.push(PathBuf::from(tilde(&line).to_string()));
+            includes.push(GitPath::Keep(PathBuf::from(tilde(&line).to_string())));
         }
     }
     Ok((includes, excludes))
@@ -164,12 +208,13 @@ fn get_repos_from_dir(dir: &Path) -> Result<Vec<PathBuf>> {
     Ok(repos)
 }
 
-fn get_repos_from_config() -> Result<Vec<PathBuf>> {
+fn get_repos_from_config() -> Result<Vec<GitPath>> {
     let (inc, exc) = get_dirs_from_config()?;
     let mut all_repos = Vec::new();
     for dir in inc {
+        let dir = dir.keep().unwrap();
         if git::is_git_repo(&dir) {
-            all_repos.push(dir);
+            all_repos.push(GitPath::Keep(dir));
         } else {
             let repos = match get_repos_from_dir(&dir) {
                 Ok(r) => r,
@@ -178,7 +223,22 @@ fn get_repos_from_config() -> Result<Vec<PathBuf>> {
                     continue;
                 }
             };
-            all_repos.extend(repos.iter().filter(|r| !exc.contains(r)).cloned());
+            all_repos.extend(repos.iter().map(|p| GitPath::Keep(p.to_path_buf())));
+        }
+    }
+    for dir in exc {
+        let dir = dir.ignore().unwrap();
+        if git::is_git_repo(&dir) {
+            all_repos.push(GitPath::Ignore(dir));
+        } else {
+            let repos = match get_repos_from_dir(&dir) {
+                Ok(r) => r,
+                Err(e) => {
+                    eprintln!("Couldn't get repos from '{:?}': '{}'\n", dir, e);
+                    continue;
+                }
+            };
+            all_repos.extend(repos.iter().map(|p| GitPath::Ignore(p.to_path_buf())));
         }
     }
     all_repos.sort();
