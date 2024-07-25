@@ -45,7 +45,8 @@ pub fn stat(p: &PathBuf, as_json: bool) -> Result<Option<String>> {
         if as_json {
             Ok(Some(format!(
                 "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
-                p.display(), out_lines[0]
+                p.display(),
+                out_lines[0]
             )))
         } else {
             Ok(Some(format!("{}\n{}\n", p.display(), out_lines.join("\n"))))
@@ -63,7 +64,8 @@ pub fn stat(p: &PathBuf, as_json: bool) -> Result<Option<String>> {
         } else if as_json {
             Ok(Some(format!(
                 "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
-                p.display(), status
+                p.display(),
+                status
             )))
         } else {
             Ok(Some(format!("{}\n{}\n", p.display(), status)))
@@ -133,22 +135,20 @@ fn modified(p: &PathBuf) -> Result<Option<String>> {
 
 /// Get a list of branches for the given git path
 pub fn branches(p: &PathBuf, as_json: bool) -> Result<Option<String>> {
-    let branches: String = command_output(p, "branch")?
-        .iter()
-        .map(|x| x.trim())
-        .filter(|x| x.starts_with('*'))
-        .map(|x| &x[2..])
-        .collect();
-    let parentpath = p.parent().ok_or_else(|| anyhow!("No parent for dir"))?;
-    let parentname = parentpath
+    let mut branches: Vec<_> = command_output(p, "branch")?;
+    branches.sort();
+    branches.reverse();
+    let branches: String = branches.iter().map(|x| x.trim().to_string()).collect::<Vec<_>>().join(", ");
+    let parent_path = p.parent().ok_or_else(|| anyhow!("No parent for dir"))?;
+    let parent_name = parent_path
         .file_stem()
         .ok_or_else(|| anyhow!("No stem for parent"))?
         .to_string_lossy();
-    let dirname = p
+    let dir_name = p
         .file_stem()
         .ok_or_else(|| anyhow!("No stem for dir"))?
         .to_string_lossy();
-    let dirstr = format!("{}/{}", parentname, dirname);
+    let dirstr = format!("{}/{}", parent_name, dir_name);
     Ok(Some(if as_json {
         format!(
             "{{\"path\": \"{}\", \"subtitle\": \"{}\"}}",
@@ -174,7 +174,9 @@ pub fn branchstat(p: &PathBuf, as_json: bool) -> Result<Option<String>> {
         Ok(Some(if as_json {
             format!(
                 "{{\"title\": \"{}\", \"subtitle\": \"{}\", \"arg\": \"{}\"}}",
-                p.display(), outputs, p.display(),
+                p.display(),
+                outputs,
+                p.display(),
             )
         } else {
             format!("{:50} | {}", p.display(), outputs)
