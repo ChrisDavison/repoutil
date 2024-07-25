@@ -1,4 +1,4 @@
-use crate::GitPath;
+use crate::PathBuf;
 use anyhow::{anyhow, Result};
 use std::path::Path;
 use std::process::Command;
@@ -10,8 +10,7 @@ pub fn is_git_repo(p: &Path) -> bool {
 }
 
 // Run a git command and return the lines of the output
-fn command_output(dir: &GitPath, command: &str) -> Result<Vec<String>> {
-    let dir = dir.keep().ok_or(anyhow!("Not a dir to show"))?;
+fn command_output(dir: &PathBuf, command: &str) -> Result<Vec<String>> {
     let out = Command::new("git")
         .current_dir(dir)
         .args(command.split(' '))
@@ -25,19 +24,19 @@ fn command_output(dir: &GitPath, command: &str) -> Result<Vec<String>> {
 /// Push all changes to the branch
 ///
 /// On success, returns nothing.
-pub fn push(p: &GitPath, _: bool) -> Result<Option<String>> {
+pub fn push(p: &PathBuf, _: bool) -> Result<Option<String>> {
     // We don't care about the output
     command_output(p, "push --all --tags").map(|_| None)
 }
 
 /// Fetch all branches of a git repo
-pub fn fetch(p: &GitPath, _: bool) -> Result<Option<String>> {
+pub fn fetch(p: &PathBuf, _: bool) -> Result<Option<String>> {
     // We don't care about the output
     command_output(p, "fetch --all --tags --prune").map(|_| None)
 }
 
 /// Get the short status (ahead, behind, and modified files) of a repo
-pub fn stat(p: &GitPath, as_json: bool) -> Result<Option<String>> {
+pub fn stat(p: &PathBuf, as_json: bool) -> Result<Option<String>> {
     let out_lines = command_output(p, "status -s -b")?;
     if out_lines.is_empty() {
         Ok(None)
@@ -46,10 +45,10 @@ pub fn stat(p: &GitPath, as_json: bool) -> Result<Option<String>> {
         if as_json {
             Ok(Some(format!(
                 "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
-                p, out_lines[0]
+                p.display(), out_lines[0]
             )))
         } else {
-            Ok(Some(format!("{}\n{}\n", p, out_lines.join("\n"))))
+            Ok(Some(format!("{}\n{}\n", p.display(), out_lines.join("\n"))))
         }
     } else {
         // We aren't ahead or behind etc, but may have local uncommitted changes
@@ -64,15 +63,15 @@ pub fn stat(p: &GitPath, as_json: bool) -> Result<Option<String>> {
         } else if as_json {
             Ok(Some(format!(
                 "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
-                p, status
+                p.display(), status
             )))
         } else {
-            Ok(Some(format!("{}\n{}\n", p, status)))
+            Ok(Some(format!("{}\n{}\n", p.display(), status)))
         }
     }
 }
 
-fn ahead_behind(p: &GitPath) -> Result<Option<String>> {
+fn ahead_behind(p: &PathBuf) -> Result<Option<String>> {
     let response: String = command_output(p, "status --porcelain --ahead-behind -b")?
         .into_iter()
         .next()
@@ -92,7 +91,7 @@ fn ahead_behind(p: &GitPath) -> Result<Option<String>> {
     })
 }
 
-fn modified(p: &GitPath) -> Result<Option<String>> {
+fn modified(p: &PathBuf) -> Result<Option<String>> {
     let mut modif = 0;
     let mut untracked = 0;
     for line in command_output(p, "status -s -b")?.into_iter().skip(1) {
@@ -133,20 +132,19 @@ fn modified(p: &GitPath) -> Result<Option<String>> {
 }
 
 /// Get a list of branches for the given git path
-pub fn branches(p: &GitPath, as_json: bool) -> Result<Option<String>> {
+pub fn branches(p: &PathBuf, as_json: bool) -> Result<Option<String>> {
     let branches: String = command_output(p, "branch")?
         .iter()
         .map(|x| x.trim())
         .filter(|x| x.starts_with('*'))
         .map(|x| &x[2..])
         .collect();
-    let path = p.keep().ok_or(anyhow!("Not a keep path"))?;
-    let parentpath = path.parent().ok_or_else(|| anyhow!("No parent for dir"))?;
+    let parentpath = p.parent().ok_or_else(|| anyhow!("No parent for dir"))?;
     let parentname = parentpath
         .file_stem()
         .ok_or_else(|| anyhow!("No stem for parent"))?
         .to_string_lossy();
-    let dirname = path
+    let dirname = p
         .file_stem()
         .ok_or_else(|| anyhow!("No stem for dir"))?
         .to_string_lossy();
@@ -162,7 +160,7 @@ pub fn branches(p: &GitPath, as_json: bool) -> Result<Option<String>> {
 }
 
 /// Get the status _of each branch_
-pub fn branchstat(p: &GitPath, as_json: bool) -> Result<Option<String>> {
+pub fn branchstat(p: &PathBuf, as_json: bool) -> Result<Option<String>> {
     let outputs = [ahead_behind(p)?, modified(p)?]
         .iter()
         .filter(|&x| x.is_some())
@@ -176,17 +174,17 @@ pub fn branchstat(p: &GitPath, as_json: bool) -> Result<Option<String>> {
         Ok(Some(if as_json {
             format!(
                 "{{\"title\": \"{}\", \"subtitle\": \"{}\", \"arg\": \"{}\"}}",
-                p, outputs, p,
+                p.display(), outputs, p.display(),
             )
         } else {
-            format!("{:50} | {}", p, outputs)
+            format!("{:50} | {}", p.display(), outputs)
         }))
     }
 }
 
 /// Get the name of any repo with local or remote changes
-pub fn needs_attention(p: &GitPath, as_json: bool) -> Result<Option<String>> {
-    let pstr = p.to_string();
+pub fn needs_attention(p: &PathBuf, as_json: bool) -> Result<Option<String>> {
+    let pstr = p.display().to_string();
     stat(p, as_json).map(|_| {
         Some(if as_json {
             format!("{{\"path\": {pstr}}}")
@@ -197,32 +195,21 @@ pub fn needs_attention(p: &GitPath, as_json: bool) -> Result<Option<String>> {
 }
 
 /// List each repo found
-pub fn list(p: &GitPath, as_json: bool) -> Result<Option<String>> {
-    if let GitPath::Keep(p) = p {
-        let pstr = p
-            .display()
-            .to_string();
-        Ok(Some(if as_json {
-            format!("{{\"title\": \"{pstr}\", \"arg\": \"{pstr}\"}}")
-        } else {
-            pstr
-        }))
+pub fn list(p: &PathBuf, as_json: bool) -> Result<Option<String>> {
+    let pstr = p.display().to_string();
+    Ok(Some(if as_json {
+        format!("{{\"title\": \"{pstr}\", \"arg\": \"{pstr}\"}}")
     } else {
-        Ok(None)
-    }}
+        pstr
+    }))
+}
 
 /// List each untracked repo found
-pub fn untracked(p: &GitPath, as_json: bool) -> Result<Option<String>> {
-    if let GitPath::Ignore(p) = p {
-        let pstr = p
-            .display()
-            .to_string();
-        Ok(Some(if as_json {
-            format!("{{\"title\": \"! {pstr}\", \"arg\": \"{pstr}\"}}")
-        } else {
-            format!("! {}", pstr)
-        }))
+pub fn untracked(p: &PathBuf, as_json: bool) -> Result<Option<String>> {
+    let pstr = p.display().to_string();
+    Ok(Some(if as_json {
+        format!("{{\"title\": \"! {pstr}\", \"arg\": \"{pstr}\"}}")
     } else {
-        Ok(None)
-    }
+        format!("! {}", pstr)
+    }))
 }
