@@ -1,7 +1,12 @@
 use crate::PathBuf;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use std::path::Path;
 use std::process::Command;
+
+pub struct RepoResult<'a> {
+    pub path: &'a PathBuf,
+    pub output: String,
+}
 
 pub fn is_git_repo(p: &Path) -> bool {
     let mut p = p.to_path_buf();
@@ -11,11 +16,11 @@ pub fn is_git_repo(p: &Path) -> bool {
 
 // Run a git command and return the lines of the output
 fn command_output(dir: &PathBuf, command: &str) -> Result<Vec<String>> {
-    let out = Command::new("git")
+    let stdout = Command::new("git")
         .current_dir(dir)
         .args(command.split(' '))
-        .output()?;
-    Ok(std::str::from_utf8(&out.stdout)?
+        .output()?.stdout;
+    Ok(std::str::from_utf8(&stdout)?
         .lines()
         .map(|x| x.to_string())
         .collect())
@@ -24,32 +29,38 @@ fn command_output(dir: &PathBuf, command: &str) -> Result<Vec<String>> {
 /// Push all changes to the branch
 ///
 /// On success, returns nothing.
-pub fn push(p: &PathBuf, _: bool) -> Result<Option<String>> {
+pub fn push(p: &PathBuf, _: bool) -> Result<RepoResult> {
     // We don't care about the output
-    command_output(p, "push --all --tags").map(|_| None)
+    command_output(p, "push --all --tags").map(|_| RepoResult {
+        path: p,
+        output: String::new(),
+    })
 }
 
 /// Fetch all branches of a git repo
-pub fn fetch(p: &PathBuf, _: bool) -> Result<Option<String>> {
+pub fn fetch(p: &PathBuf, _: bool) -> Result<RepoResult> {
     // We don't care about the output
-    command_output(p, "fetch --all --tags --prune").map(|_| None)
+    command_output(p, "fetch --all --tags --prune").map(|_| RepoResult {
+        path: p,
+        output: String::new(),
+    })
 }
 
 /// Get the short status (ahead, behind, and modified files) of a repo
-pub fn stat(p: &PathBuf, as_json: bool) -> Result<Option<String>> {
+pub fn stat(p: &PathBuf, as_json: bool) -> Result<RepoResult> {
     let out_lines = command_output(p, "status -s -b")?;
-    if out_lines.is_empty() {
-        Ok(None)
+    let output = if out_lines.is_empty() {
+        String::new()
     } else if out_lines[0].ends_with(']') {
         // We have an 'ahead', 'behind' or similar, so free to return the status early
         if as_json {
-            Ok(Some(format!(
+            format!(
                 "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
                 p.display(),
                 out_lines[0]
-            )))
+            )
         } else {
-            Ok(Some(format!("{}\n{}\n", p.display(), out_lines.join("\n"))))
+            format!("{}\n{}\n", p.display(), out_lines.join("\n"))
         }
     } else {
         // We aren't ahead or behind etc, but may have local uncommitted changes
@@ -60,17 +71,18 @@ pub fn stat(p: &PathBuf, as_json: bool) -> Result<Option<String>> {
             .collect::<Vec<String>>()
             .join("\n");
         if status.is_empty() {
-            Ok(None)
+            String::new()
         } else if as_json {
-            Ok(Some(format!(
+            format!(
                 "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
                 p.display(),
                 status
-            )))
+            )
         } else {
-            Ok(Some(format!("{}\n{}\n", p.display(), status)))
+            format!("{}\n{}\n", p.display(), status)
         }
-    }
+    };
+    Ok(RepoResult { path: p, output })
 }
 
 fn ahead_behind(p: &PathBuf) -> Result<Option<String>> {
@@ -79,18 +91,18 @@ fn ahead_behind(p: &PathBuf) -> Result<Option<String>> {
         .next()
         .filter(|x| x.contains('['))
         .unwrap_or(String::new());
-    Ok(if response.is_empty() {
-        None
+    if response.is_empty() {
+        Ok(None)
     } else {
         let start = response.find('[').unwrap();
         let end = response.find(']').unwrap();
-        Some(
+        Ok(Some(
             response[start + 1..end]
                 .replace("ahead ", "↑")
                 .replace("behind ", "↓")
                 .to_string(),
-        )
-    })
+        ))
+    }
 }
 
 fn modified(p: &PathBuf) -> Result<Option<String>> {
@@ -120,47 +132,41 @@ fn modified(p: &PathBuf) -> Result<Option<String>> {
     } else {
         String::new()
     };
-    let outstr = [modif_str, untrack_str]
-        .iter()
-        .filter(|x| !x.is_empty())
-        .map(|x| x.to_string())
-        .collect::<Vec<String>>()
-        .join(", ");
-    if !outstr.is_empty() {
-        Ok(Some(outstr))
-    } else {
-        Ok(None)
-    }
+    Ok(Some(
+        [modif_str, untrack_str]
+            .iter()
+            .filter(|x| !x.is_empty())
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>()
+            .join(", "),
+    ))
 }
 
 /// Get a list of branches for the given git path
-pub fn branches(p: &PathBuf, as_json: bool) -> Result<Option<String>> {
+pub fn branches(p: &PathBuf, as_json: bool) -> Result<RepoResult> {
     let mut branches: Vec<_> = command_output(p, "branch")?;
     branches.sort();
     branches.reverse();
-    let branches: String = branches.iter().map(|x| x.trim().to_string()).collect::<Vec<_>>().join(", ");
-    let parent_path = p.parent().ok_or_else(|| anyhow!("No parent for dir"))?;
-    let parent_name = parent_path
-        .file_stem()
-        .ok_or_else(|| anyhow!("No stem for parent"))?
-        .to_string_lossy();
-    let dir_name = p
-        .file_stem()
-        .ok_or_else(|| anyhow!("No stem for dir"))?
-        .to_string_lossy();
-    let dirstr = format!("{}/{}", parent_name, dir_name);
-    Ok(Some(if as_json {
-        format!(
-            "{{\"path\": \"{}\", \"subtitle\": \"{}\"}}",
-            dirstr, branches
-        )
-    } else {
-        format!("{:40}\t{}", dirstr, branches)
-    }))
+    let branches: String = branches
+        .iter()
+        .map(|x| x.trim().to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    Ok(RepoResult {
+        path: p,
+        output: if as_json {
+            format!(
+                "{{\"path\": \"{}\", \"subtitle\": \"{}\"}}",
+                p.display(), branches
+            )
+        } else {
+            format!("{:40}\t{}", p.display(), branches)
+        },
+    })
 }
 
 /// Get the status _of each branch_
-pub fn branchstat(p: &PathBuf, as_json: bool) -> Result<Option<String>> {
+pub fn branchstat(p: &PathBuf, as_json: bool) -> Result<RepoResult> {
     let outputs = [ahead_behind(p)?, modified(p)?]
         .iter()
         .filter(|&x| x.is_some())
@@ -168,50 +174,56 @@ pub fn branchstat(p: &PathBuf, as_json: bool) -> Result<Option<String>> {
         .collect::<Vec<&str>>()
         .join(", ");
 
-    if outputs.is_empty() {
-        Ok(None)
+    let output = if outputs.is_empty() {
+        String::new()
+    } else if as_json {
+        format!(
+            "{{\"title\": \"{}\", \"subtitle\": \"{}\", \"arg\": \"{}\"}}",
+            p.display(),
+            outputs,
+            p.display(),
+        )
     } else {
-        Ok(Some(if as_json {
-            format!(
-                "{{\"title\": \"{}\", \"subtitle\": \"{}\", \"arg\": \"{}\"}}",
-                p.display(),
-                outputs,
-                p.display(),
-            )
-        } else {
-            format!("{:50} | {}", p.display(), outputs)
-        }))
-    }
+        format!("{:50} | {}", p.display(), outputs)
+    };
+    Ok(RepoResult { path: p, output })
 }
 
 /// Get the name of any repo with local or remote changes
-pub fn needs_attention(p: &PathBuf, as_json: bool) -> Result<Option<String>> {
+pub fn needs_attention(p: &PathBuf, as_json: bool) -> Result<RepoResult> {
     let pstr = p.display().to_string();
-    stat(p, as_json).map(|_| {
-        Some(if as_json {
+    stat(p, as_json).map(|_| RepoResult {
+        path: p,
+        output: if as_json {
             format!("{{\"path\": {pstr}}}")
         } else {
             pstr
-        })
+        },
     })
 }
 
 /// List each repo found
-pub fn list(p: &PathBuf, as_json: bool) -> Result<Option<String>> {
+pub fn list(p: &PathBuf, as_json: bool) -> Result<RepoResult> {
     let pstr = p.display().to_string();
-    Ok(Some(if as_json {
-        format!("{{\"title\": \"{pstr}\", \"arg\": \"{pstr}\"}}")
-    } else {
-        pstr
-    }))
+    Ok(RepoResult {
+        path: p,
+        output: if as_json {
+            format!("{{\"title\": \"{pstr}\", \"arg\": \"{pstr}\"}}")
+        } else {
+            pstr
+        },
+    })
 }
 
 /// List each untracked repo found
-pub fn untracked(p: &PathBuf, as_json: bool) -> Result<Option<String>> {
+pub fn untracked(p: &PathBuf, as_json: bool) -> Result<RepoResult> {
     let pstr = p.display().to_string();
-    Ok(Some(if as_json {
-        format!("{{\"title\": \"! {pstr}\", \"arg\": \"{pstr}\"}}")
-    } else {
-        format!("! {}", pstr)
-    }))
+    Ok(RepoResult {
+        path: p,
+        output: if as_json {
+            format!("{{\"title\": \"! {pstr}\", \"arg\": \"{pstr}\"}}")
+        } else {
+            format!("! {}", pstr)
+        },
+    })
 }

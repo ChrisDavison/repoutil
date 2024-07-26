@@ -14,4 +14,3 @@ shellexpand = "3.1.0"
 anyhow = "1.0"
 structopt = "0.3.26"
 rayon = "1.10.0"
-indicatif = { version = "0.17.8", features = ["rayon"] }
