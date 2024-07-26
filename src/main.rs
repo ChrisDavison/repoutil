@@ -74,19 +74,15 @@ fn main() {
     );
     let outs: Vec<_> = repos
         .par_iter()
-        .filter_map(|repo| match cmd(repo, json) {
-            Ok(rr) => {
-                if rr.output.is_empty() {
-                    None
-                } else {
-                    Some(rr.output.replace(&common, ""))
-                }
-            }
-            Err(e) => {
+        .filter_map(|repo| match (opts.json, cmd(repo)) {
+            (false, Ok(rr)) => rr.plain(&common),
+            (true, Ok(rr)) => rr.json(&common),
+            (_, Err(e)) => {
                 eprintln!("ERR `{}`: {}", repo.display(), e);
                 None
             }
         })
+        .filter(|s| !s.is_empty())
         .collect();
     if json {
         println!("{{\"items\": [{}]}}", outs.join(","));

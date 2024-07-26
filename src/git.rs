@@ -3,9 +3,76 @@ use anyhow::Result;
 use std::path::Path;
 use std::process::Command;
 
-pub struct RepoResult<'a> {
-    pub path: &'a PathBuf,
-    pub output: String,
+pub enum GitOutput<'a> {
+    Push(&'a PathBuf),
+    Fetch(&'a PathBuf),
+    List(&'a PathBuf),
+    Unclean(&'a PathBuf),
+    Untracked(&'a PathBuf),
+    Branches(&'a PathBuf, String),
+    Branchstat(&'a PathBuf, String),
+    Stat(&'a PathBuf, Vec<String>),
+}
+
+impl<'a> GitOutput<'a> {
+    pub fn plain(&self, common_substring: &str) -> Option<String> {
+        let f = |repo: String| repo.replace(common_substring, "");
+        let outstr = match self {
+            // Don't want output for these cases
+            GitOutput::Push(_) => return None,
+            GitOutput::Fetch(_) => return None,
+            // Just show the shortened repo path
+            GitOutput::List(p) => f(p.display().to_string()),
+            GitOutput::Unclean(p) => f(p.display().to_string()),
+            GitOutput::Untracked(p) => f(p.display().to_string()),
+            // More complicated outputs
+            GitOutput::Branches(p, b) => format!("{:30}\t{}", f(p.display().to_string()), b),
+            GitOutput::Branchstat(p, o) => {
+                if o.is_empty() {
+                    return None;
+                }
+                format!("{:30} | {}", f(p.display().to_string()), o)
+            }
+            GitOutput::Stat(p, ss) => {
+                if ss.is_empty() {
+                    return None;
+                }
+                format!("{}\n{}\n", f(p.display().to_string()), ss.join("\n"))
+            }
+        };
+        Some(outstr)
+    }
+    pub fn json(&self, common_substring: &str) -> Option<String> {
+        let disp = |p: &PathBuf| p.display().to_string();
+        let (title, subtitle, arg) = match self {
+            // Don't want the outputs for these cases
+            GitOutput::Push(_) => return None, // early return. don't care about output
+            GitOutput::Fetch(_) => return None, // early return. don't care about output
+            // Just show the shortened repo path
+            GitOutput::List(p) => (p, None, disp(p)),
+            GitOutput::Unclean(p) => (p, None, disp(p)),
+            GitOutput::Untracked(p) => (p, None, disp(p)),
+            GitOutput::Branches(p, b) => (p, Some(b.clone()), String::new()),
+            GitOutput::Branchstat(p, o) => {
+                if o.is_empty() {
+                    return None;
+                }
+                (p, Some(o.clone()), disp(p))
+            }
+            GitOutput::Stat(p, ss) => {
+                if ss.is_empty() {
+                    return None;
+                }
+                (p, Some(ss.join(", ")), disp(p))
+            }
+        };
+        let title = disp(title).replace(common_substring, "");
+        let mut fields = format!(r#""title": "{title}", "arg": "{arg}""#);
+        if let Some(sub) = subtitle {
+            fields += &format!(r#", "subtitle": "{sub}""#);
+        }
+        Some(format!(r#"{{{fields}}}"#))
+    }
 }
 
 pub fn is_git_repo(p: &Path) -> bool {
@@ -19,7 +86,8 @@ fn command_output(dir: &PathBuf, command: &str) -> Result<Vec<String>> {
     let stdout = Command::new("git")
         .current_dir(dir)
         .args(command.split(' '))
-        .output()?.stdout;
+        .output()?
+        .stdout;
     Ok(std::str::from_utf8(&stdout)?
         .lines()
         .map(|x| x.to_string())
@@ -29,60 +97,39 @@ fn command_output(dir: &PathBuf, command: &str) -> Result<Vec<String>> {
 /// Push all changes to the branch
 ///
 /// On success, returns nothing.
-pub fn push(p: &PathBuf, _: bool) -> Result<RepoResult> {
-    // We don't care about the output
-    command_output(p, "push --all --tags").map(|_| RepoResult {
-        path: p,
-        output: String::new(),
-    })
+pub fn push(p: &PathBuf) -> Result<GitOutput> {
+    command_output(p, "push --all --tags").map(|_| GitOutput::Push(p))
 }
 
 /// Fetch all branches of a git repo
-pub fn fetch(p: &PathBuf, _: bool) -> Result<RepoResult> {
-    // We don't care about the output
-    command_output(p, "fetch --all --tags --prune").map(|_| RepoResult {
-        path: p,
-        output: String::new(),
-    })
+pub fn fetch(p: &PathBuf) -> Result<GitOutput> {
+    command_output(p, "fetch --all --tags --prune").map(|_| GitOutput::Fetch(p))
+}
+
+/// Get the name of any repo with local or remote changes
+pub fn needs_attention(p: &PathBuf) -> Result<GitOutput> {
+    stat(p).map(|_| GitOutput::Unclean(p))
+}
+
+/// List each repo found
+pub fn list(p: &PathBuf) -> Result<GitOutput> {
+    Ok(GitOutput::List(p))
+}
+
+/// List each untracked repo found
+pub fn untracked(p: &PathBuf) -> Result<GitOutput> {
+    Ok(GitOutput::Untracked(p))
 }
 
 /// Get the short status (ahead, behind, and modified files) of a repo
-pub fn stat(p: &PathBuf, as_json: bool) -> Result<RepoResult> {
+pub fn stat(p: &PathBuf) -> Result<GitOutput> {
     let out_lines = command_output(p, "status -s -b")?;
-    let output = if out_lines.is_empty() {
-        String::new()
-    } else if out_lines[0].ends_with(']') {
-        // We have an 'ahead', 'behind' or similar, so free to return the status early
-        if as_json {
-            format!(
-                "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
-                p.display(),
-                out_lines[0]
-            )
-        } else {
-            format!("{}\n{}\n", p.display(), out_lines.join("\n"))
-        }
+    let status = if out_lines.is_empty() || out_lines[0].ends_with(']') {
+       out_lines 
     } else {
-        // We aren't ahead or behind etc, but may have local uncommitted changes
-        let status: String = out_lines
-            .iter()
-            .skip(1)
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>()
-            .join("\n");
-        if status.is_empty() {
-            String::new()
-        } else if as_json {
-            format!(
-                "{{\"title\": \"{}\", \"subtitle\": \"{}\"}}",
-                p.display(),
-                status
-            )
-        } else {
-            format!("{}\n{}\n", p.display(), status)
-        }
+       out_lines[1..].to_vec()
     };
-    Ok(RepoResult { path: p, output })
+    Ok(GitOutput::Stat(p, status))
 }
 
 fn ahead_behind(p: &PathBuf) -> Result<Option<String>> {
@@ -143,7 +190,7 @@ fn modified(p: &PathBuf) -> Result<Option<String>> {
 }
 
 /// Get a list of branches for the given git path
-pub fn branches(p: &PathBuf, as_json: bool) -> Result<RepoResult> {
+pub fn branches(p: &PathBuf) -> Result<GitOutput> {
     let mut branches: Vec<_> = command_output(p, "branch")?;
     branches.sort();
     branches.reverse();
@@ -152,21 +199,11 @@ pub fn branches(p: &PathBuf, as_json: bool) -> Result<RepoResult> {
         .map(|x| x.trim().to_string())
         .collect::<Vec<_>>()
         .join(", ");
-    Ok(RepoResult {
-        path: p,
-        output: if as_json {
-            format!(
-                "{{\"path\": \"{}\", \"subtitle\": \"{}\"}}",
-                p.display(), branches
-            )
-        } else {
-            format!("{:40}\t{}", p.display(), branches)
-        },
-    })
+    Ok(GitOutput::Branches(p, branches))
 }
 
 /// Get the status _of each branch_
-pub fn branchstat(p: &PathBuf, as_json: bool) -> Result<RepoResult> {
+pub fn branchstat(p: &PathBuf) -> Result<GitOutput> {
     let outputs = [ahead_behind(p)?, modified(p)?]
         .iter()
         .filter(|&x| x.is_some())
@@ -174,56 +211,5 @@ pub fn branchstat(p: &PathBuf, as_json: bool) -> Result<RepoResult> {
         .collect::<Vec<&str>>()
         .join(", ");
 
-    let output = if outputs.is_empty() {
-        String::new()
-    } else if as_json {
-        format!(
-            "{{\"title\": \"{}\", \"subtitle\": \"{}\", \"arg\": \"{}\"}}",
-            p.display(),
-            outputs,
-            p.display(),
-        )
-    } else {
-        format!("{:50} | {}", p.display(), outputs)
-    };
-    Ok(RepoResult { path: p, output })
-}
-
-/// Get the name of any repo with local or remote changes
-pub fn needs_attention(p: &PathBuf, as_json: bool) -> Result<RepoResult> {
-    let pstr = p.display().to_string();
-    stat(p, as_json).map(|_| RepoResult {
-        path: p,
-        output: if as_json {
-            format!("{{\"path\": {pstr}}}")
-        } else {
-            pstr
-        },
-    })
-}
-
-/// List each repo found
-pub fn list(p: &PathBuf, as_json: bool) -> Result<RepoResult> {
-    let pstr = p.display().to_string();
-    Ok(RepoResult {
-        path: p,
-        output: if as_json {
-            format!("{{\"title\": \"{pstr}\", \"arg\": \"{pstr}\"}}")
-        } else {
-            pstr
-        },
-    })
-}
-
-/// List each untracked repo found
-pub fn untracked(p: &PathBuf, as_json: bool) -> Result<RepoResult> {
-    let pstr = p.display().to_string();
-    Ok(RepoResult {
-        path: p,
-        output: if as_json {
-            format!("{{\"title\": \"! {pstr}\", \"arg\": \"{pstr}\"}}")
-        } else {
-            format!("! {}", pstr)
-        },
-    })
+    Ok(GitOutput::Branchstat(p, outputs))
 }
