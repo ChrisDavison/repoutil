@@ -4,8 +4,8 @@ use std::path::Path;
 use std::process::Command;
 
 pub enum GitOutput<'a> {
+    #[allow(dead_code)]
     Push(&'a PathBuf),
-    Fetch(&'a PathBuf),
     List(&'a PathBuf),
     Unclean(&'a PathBuf),
     Untracked(&'a PathBuf),
@@ -16,28 +16,27 @@ pub enum GitOutput<'a> {
 
 impl<'a> GitOutput<'a> {
     pub fn plain(&self, common_substring: &str) -> Option<String> {
-        let f = |repo: String| repo.replace(common_substring, "");
+        let f = |repo: &PathBuf| repo.display().to_string().replace(common_substring, "");
         let outstr = match self {
             // Don't want output for these cases
             GitOutput::Push(_) => return None,
-            GitOutput::Fetch(_) => return None,
             // Just show the shortened repo path
-            GitOutput::List(p) => f(p.display().to_string()),
-            GitOutput::Unclean(p) => f(p.display().to_string()),
-            GitOutput::Untracked(p) => f(p.display().to_string()),
+            GitOutput::List(p) => f(p),
+            GitOutput::Unclean(p) => f(p),
+            GitOutput::Untracked(p) => f(p),
             // More complicated outputs
-            GitOutput::Branches(p, b) => format!("{:30}\t{}", f(p.display().to_string()), b),
+            GitOutput::Branches(p, b) => format!("{:30}\t{}", f(p), b),
             GitOutput::Branchstat(p, o) => {
                 if o.is_empty() {
                     return None;
                 }
-                format!("{:30} | {}", f(p.display().to_string()), o)
+                format!("{:30} | {}", f(p), o)
             }
             GitOutput::Stat(p, ss) => {
                 if ss.is_empty() {
                     return None;
                 }
-                format!("{}\n{}\n", f(p.display().to_string()), ss.join("\n"))
+                format!("{}\n{}\n", f(p), ss.join("\n"))
             }
         };
         Some(outstr)
@@ -47,11 +46,11 @@ impl<'a> GitOutput<'a> {
         let (title, subtitle, arg) = match self {
             // Don't want the outputs for these cases
             GitOutput::Push(_) => return None, // early return. don't care about output
-            GitOutput::Fetch(_) => return None, // early return. don't care about output
             // Just show the shortened repo path
             GitOutput::List(p) => (p, None, disp(p)),
             GitOutput::Unclean(p) => (p, None, disp(p)),
             GitOutput::Untracked(p) => (p, None, disp(p)),
+            // More complicated outputs
             GitOutput::Branches(p, b) => (p, Some(b.clone()), String::new()),
             GitOutput::Branchstat(p, o) => {
                 if o.is_empty() {
@@ -103,7 +102,8 @@ pub fn push(p: &PathBuf) -> Result<GitOutput> {
 
 /// Fetch all branches of a git repo
 pub fn fetch(p: &PathBuf) -> Result<GitOutput> {
-    command_output(p, "fetch --all --tags --prune").map(|_| GitOutput::Fetch(p))
+    command_output(p, "fetch --all --tags --prune")?;
+    branchstat(p)
 }
 
 /// Get the name of any repo with local or remote changes
