@@ -66,12 +66,7 @@ fn main() {
         includes
     };
 
-    let common = util::common_substring(
-        &repos
-            .iter()
-            .map(|x| format!("{}", x.display()))
-            .collect::<Vec<String>>(),
-    );
+    let common = util::common_ancestor(&repos);
     let outs: Vec<_> = repos
         .par_iter()
         .filter_map(|repo| match (opts.json, cmd(repo)) {
