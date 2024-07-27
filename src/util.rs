@@ -1,35 +1,34 @@
 use anyhow::{anyhow, Result};
+use shellexpand::tilde;
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
-use shellexpand::tilde;
 
 use crate::git;
 
-pub fn common_substring<T: ToString>(ss: &[T]) -> String {
+pub fn common_ancestor(ss: &[PathBuf]) -> PathBuf {
     if ss.len() == 1 {
-        return String::new();
+        return PathBuf::new();
     }
     let mut idx = 0;
-    let charlists = ss
+    let components = ss
         .iter()
-        .map(|x| x.to_string().chars().collect())
-        .collect::<Vec<Vec<char>>>();
-    if charlists.is_empty() {
-        return "".to_string();
-    }
-    let first_charlist = &charlists[0];
+        .map(|x| x.components().collect::<Vec<_>>())
+        .collect::<Vec<_>>();
+    let entry0 = &components[0];
     loop {
-        let first = first_charlist.get(idx);
-        if !charlists.iter().all(|w| w.get(idx) == first) {
-            let first = first_charlist.get(idx);
-            if !charlists.iter().all(|w| w.get(idx) == first) {
+        let first = entry0.get(idx);
+        if !components.iter().all(|w| w.get(idx) == first) {
+            let first = entry0.get(idx);
+            if !components.iter().all(|w| w.get(idx) == first) {
                 break;
             }
         }
         idx += 1;
     }
-    ss[0].to_string().chars().take(idx).collect()
+    entry0.iter().take(idx).collect()
 }
+
+
 
 pub fn get_dirs_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
     let repoutil_config = tilde("~/.repoutilrc").to_string();
@@ -69,7 +68,11 @@ pub fn get_repos_from_dir(dir: &Path) -> Result<Vec<PathBuf>> {
 
 pub fn get_repos_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
     let (inc, exc) = get_dirs_from_config()?;
-    let excludes: Vec<_> = exc.iter().filter(|dir| git::is_git_repo(dir)).cloned().collect();
+    let excludes: Vec<_> = exc
+        .iter()
+        .filter(|dir| git::is_git_repo(dir))
+        .cloned()
+        .collect();
 
     let mut includes = Vec::with_capacity(inc.len());
     for dir in inc {
@@ -86,29 +89,29 @@ pub fn get_repos_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
             includes.extend(repos.iter().map(|p| p.to_path_buf()));
         }
     }
-        includes.sort();
+    includes.sort();
     includes.dedup();
-    let includes = includes.iter().filter(|x| !excludes.contains(x)).cloned().collect();
+    let includes = includes
+        .iter()
+        .filter(|x| !excludes.contains(x))
+        .cloned()
+        .collect();
     Ok((includes, excludes))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::common_substring;
+    use super::common_ancestor;
 
     #[test]
-    fn test_common_substring() {
-        assert_eq!(common_substring(&["aaa", "aab", "aac"]), "aa");
-        assert_eq!(common_substring::<&str>(&[]), "");
-        assert_eq!(common_substring(&["Something"]), "");
+    fn test_common_ancestor() {
         assert_eq!(
-            common_substring(&[
-                "/home/cdavison/code",
-                "/home/cdavison/code/recipes",
-                "/home/cdavison/strathclyde"
+            common_ancestor(&[
+                std::path::PathBuf::from("/home/cdavison/code"),
+                std::path::PathBuf::from("/home/cdavison/code/recipes"),
+                std::path::PathBuf::from("/home/cdavison/strathclyde")
             ]),
-            "/home/cdavison/"
+            std::path::PathBuf::from("/home/cdavison/")
         );
     }
 }
-

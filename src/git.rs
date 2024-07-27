@@ -15,8 +15,8 @@ pub enum GitOutput<'a> {
 }
 
 impl<'a> GitOutput<'a> {
-    pub fn plain(&self, common_substring: &str) -> Option<String> {
-        let f = |repo: &PathBuf| repo.display().to_string().replace(common_substring, "");
+    pub fn plain(&self, common_ancestor: &PathBuf) -> Option<String> {
+        let f = |repo: &PathBuf| repo.strip_prefix(common_ancestor).unwrap().display().to_string();
         let outstr = match self {
             // Don't want output for these cases
             GitOutput::Push(_) => return None,
@@ -41,7 +41,7 @@ impl<'a> GitOutput<'a> {
         };
         Some(outstr)
     }
-    pub fn json(&self, common_substring: &str) -> Option<String> {
+    pub fn json(&self, common_ancestor: &PathBuf) -> Option<String> {
         let disp = |p: &PathBuf| p.display().to_string();
         let (title, subtitle, arg) = match self {
             // Don't want the outputs for these cases
@@ -65,7 +65,7 @@ impl<'a> GitOutput<'a> {
                 (p, Some(ss.join(", ")), disp(p))
             }
         };
-        let title = disp(title).replace(common_substring, "");
+        let title = title.strip_prefix(common_ancestor).ok()?.display().to_string();
         let mut fields = format!(r#""title": "{title}", "arg": "{arg}""#);
         if let Some(sub) = subtitle {
             fields += &format!(r#", "subtitle": "{sub}""#);
