@@ -16,7 +16,12 @@ pub enum GitOutput<'a> {
 
 impl<'a> GitOutput<'a> {
     pub fn plain(&self, common_ancestor: &PathBuf) -> Option<String> {
-        let f = |repo: &PathBuf| repo.strip_prefix(common_ancestor).unwrap().display().to_string();
+        let f = |repo: &PathBuf| {
+            repo.strip_prefix(common_ancestor)
+                .unwrap()
+                .display()
+                .to_string()
+        };
         let outstr = match self {
             // Don't want output for these cases
             GitOutput::Push(_) => return None,
@@ -65,7 +70,11 @@ impl<'a> GitOutput<'a> {
                 (p, Some(ss.join(", ")), disp(p))
             }
         };
-        let title = title.strip_prefix(common_ancestor).ok()?.display().to_string();
+        let title = title
+            .strip_prefix(common_ancestor)
+            .ok()?
+            .display()
+            .to_string();
         let mut fields = format!(r#""title": "{title}", "arg": "{arg}""#);
         if let Some(sub) = subtitle {
             fields += &format!(r#", "subtitle": "{sub}""#);
@@ -125,30 +134,34 @@ pub fn untracked(p: &PathBuf) -> Result<GitOutput> {
 pub fn stat(p: &PathBuf) -> Result<GitOutput> {
     let out_lines = command_output(p, "status -s -b")?;
     let status = if out_lines.is_empty() || out_lines[0].ends_with(']') {
-       out_lines 
+        out_lines
     } else {
-       out_lines[1..].to_vec()
+        out_lines[1..].to_vec()
     };
     Ok(GitOutput::Stat(p, status))
 }
 
 fn ahead_behind(p: &PathBuf) -> Result<Option<String>> {
-    let response: String = command_output(p, "status --porcelain --ahead-behind -b")?
+    let first_line = command_output(p, "status --porcelain --ahead-behind -b")?
         .into_iter()
-        .next()
-        .filter(|x| x.contains('['))
-        .unwrap_or(String::new());
-    if response.is_empty() {
-        Ok(None)
-    } else {
-        let start = response.find('[').unwrap();
-        let end = response.find(']').unwrap();
-        Ok(Some(
-            response[start + 1..end]
-                .replace("ahead ", "↑")
-                .replace("behind ", "↓")
-                .to_string(),
-        ))
+        .next();
+
+    match first_line.filter(|x| x.contains('[')) {
+        Some(response) => {
+            // We're already filtering on contains, so safe to unwrap
+            let start = response.find('[').unwrap();
+            let end = response.find(']').unwrap();
+            Ok(Some(
+                response[start + 1..end]
+                    .replace("ahead ", "↑")
+                    .replace("behind ", "↓")
+                    .to_string(),
+            ))
+        }
+        // We should _always_ have a 'next' on the command output as the above
+        // command outputs the branch info as the first line.
+        // Therefore, 'none' only occurs with an empty filter response.
+        None => Ok(None),
     }
 }
 

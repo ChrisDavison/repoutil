@@ -59,7 +59,13 @@ fn main() {
         OptCommand::Untracked => git::untracked,
     };
 
-    let (includes, excludes) = util::get_repos_from_config().expect("Couldn't get repos");
+    let (includes, excludes) = match util::get_repos_from_config() {
+        Ok((i, e)) => (i, e),
+        Err(err) => {
+            eprintln!("ERR `{}`", err);
+            std::process::exit(1);
+        }
+    };
     let repos = if opts.command == OptCommand::Untracked {
         excludes
     } else {
