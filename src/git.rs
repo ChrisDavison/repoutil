@@ -141,67 +141,6 @@ pub fn stat(p: &PathBuf) -> Result<GitOutput> {
     Ok(GitOutput::Stat(p, status))
 }
 
-fn ahead_behind(p: &PathBuf) -> Result<Option<String>> {
-    let first_line = command_output(p, "status --porcelain --ahead-behind -b")?
-        .into_iter()
-        .next();
-
-    match first_line.filter(|x| x.contains('[')) {
-        Some(response) => {
-            // We're already filtering on contains, so safe to unwrap
-            let start = response.find('[').unwrap();
-            let end = response.find(']').unwrap();
-            Ok(Some(
-                response[start + 1..end]
-                    .replace("ahead ", "↑")
-                    .replace("behind ", "↓")
-                    .to_string(),
-            ))
-        }
-        // We should _always_ have a 'next' on the command output as the above
-        // command outputs the branch info as the first line.
-        // Therefore, 'none' only occurs with an empty filter response.
-        None => Ok(None),
-    }
-}
-
-fn modified(p: &PathBuf) -> Result<Option<String>> {
-    let mut modif = 0;
-    let mut untracked = 0;
-    for line in command_output(p, "status -s -b")?.into_iter().skip(1) {
-        let trimmed = line.trim_start().to_string();
-        let trimmed = if trimmed.starts_with('\u{1b}') {
-            trimmed[5..6].to_string()
-        } else {
-            trimmed
-        };
-        if trimmed == "M" {
-            modif += 1;
-        }
-        if trimmed == "?" {
-            untracked += 1;
-        }
-    }
-    let modif_str = if modif > 0 {
-        format!("{}±", modif)
-    } else {
-        String::new()
-    };
-    let untrack_str = if untracked > 0 {
-        format!("{}?", untracked)
-    } else {
-        String::new()
-    };
-    Ok(Some(
-        [modif_str, untrack_str]
-            .iter()
-            .filter(|x| !x.is_empty())
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>()
-            .join(", "),
-    ))
-}
-
 /// Get a list of branches for the given git path
 pub fn branches(p: &PathBuf) -> Result<GitOutput> {
     let mut branches: Vec<_> = command_output(p, "branch")?;
@@ -217,12 +156,48 @@ pub fn branches(p: &PathBuf) -> Result<GitOutput> {
 
 /// Get the status _of each branch_
 pub fn branchstat(p: &PathBuf) -> Result<GitOutput> {
-    let outputs = [ahead_behind(p)?, modified(p)?]
-        .iter()
-        .filter(|&x| x.is_some())
-        .map(|x| x.as_ref().unwrap().as_str())
-        .collect::<Vec<&str>>()
-        .join(", ");
+    let mut response = command_output(p, "status --porcelain --ahead-behind -b")?.into_iter();
 
-    Ok(GitOutput::Branchstat(p, outputs))
+    let branch_line = response.next();
+
+    // Get the 'ahead/behind' status
+    let mut parts = Vec::new();
+    if let Some(response) = branch_line.filter(|x| x.contains('[')) {
+        // We're already filtering on contains, so safe to unwrap
+        let start = response.find('[').unwrap();
+        let end = response.find(']').unwrap();
+        parts.push(
+            response[start + 1..end]
+                .replace("ahead ", "↑")
+                .replace("behind ", "↓")
+                .to_string(),
+        )
+    }
+
+    // Now go through each file reported, and count modified or untracked
+    let mut n_modified = 0;
+    let mut n_untracked = 0;
+    for line in response {
+        let trimmed = line.trim_start().to_string();
+        let trimmed = if trimmed.starts_with('\u{1b}') {
+            trimmed[5..6].to_string()
+        } else {
+            trimmed
+        };
+        if trimmed == "M" {
+            n_modified += 1;
+        }
+        if trimmed == "?" {
+            n_untracked += 1;
+        }
+    }
+
+    if n_modified > 0 {
+        parts.push(format!("{}±", n_modified))
+    };
+    if n_untracked > 0 {
+        parts.push(format!("{}?", n_untracked))
+    };
+
+    Ok(GitOutput::Branchstat(p, parts.join(", ")))
 }
