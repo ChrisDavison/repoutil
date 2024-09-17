@@ -1,62 +1,62 @@
+use clap::{Parser, Subcommand};
 use rayon::prelude::*;
 use std::path::PathBuf;
-use structopt::StructOpt;
 
 mod git;
 mod util;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "repoutil", about = "Operations on multiple git repos")]
-struct Opts {
-    #[structopt(subcommand)]
-    command: OptCommand,
+#[derive(Debug, Parser)]
+#[command(name = "repoutil", about = "Operations on multiple git repos")]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
     /// Use JSON rather than plaintext output
-    #[structopt(long, short)]
+    #[arg(long, short)]
     json: bool,
 }
 
-#[derive(Debug, StructOpt, PartialEq)]
-enum OptCommand {
+#[derive(Debug, Subcommand, PartialEq)]
+enum Command {
     /// Push commits
-    #[structopt(alias = "p")]
+    #[command(alias = "p")]
     Push,
     /// Fetch commits and tags
-    #[structopt(alias = "f")]
+    #[command(alias = "f")]
     Fetch,
     /// Show short status
-    #[structopt(alias = "s")]
+    #[command(alias = "s")]
     Stat,
     /// List tracked repos
-    #[structopt(alias = "l")]
+    #[command(alias = "l")]
     List,
     /// List repos with local changes
-    #[structopt(alias = "u")]
+    #[command(alias = "u")]
     Unclean,
     /// List short status of all branches
-    #[structopt(alias = "bs")]
+    #[command(alias = "bs")]
     Branchstat,
     /// List all branches
-    #[structopt(alias = "b")]
+    #[command(alias = "b")]
     Branches,
     /// List all untracked folders
-    #[structopt(alias = "un")]
+    #[command(alias = "un")]
     Untracked,
 }
 
 fn main() {
-    let opts = Opts::from_args();
+    let opts = Cli::parse();
 
     let json = opts.json;
 
     let cmd = match opts.command {
-        OptCommand::Push => git::push,
-        OptCommand::Fetch => git::fetch,
-        OptCommand::Stat => git::stat,
-        OptCommand::List => git::list,
-        OptCommand::Unclean => git::needs_attention,
-        OptCommand::Branchstat => git::branchstat,
-        OptCommand::Branches => git::branches,
-        OptCommand::Untracked => git::untracked,
+        Command::Push => git::push,
+        Command::Fetch => git::fetch,
+        Command::Stat => git::stat,
+        Command::List => git::list,
+        Command::Unclean => git::needs_attention,
+        Command::Branchstat => git::branchstat,
+        Command::Branches => git::branches,
+        Command::Untracked => git::untracked,
     };
 
     let (includes, excludes) = match util::get_repos_from_config() {
@@ -66,7 +66,7 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let repos = if opts.command == OptCommand::Untracked {
+    let repos = if opts.command == Command::Untracked {
         excludes
     } else {
         includes
