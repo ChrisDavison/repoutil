@@ -184,10 +184,10 @@ pub fn branchstat(p: &PathBuf) -> Result<GitOutput> {
         } else {
             trimmed
         };
-        if trimmed == "M" {
+        if trimmed.starts_with("M") {
             n_modified += 1;
         }
-        if trimmed == "?" {
+        if trimmed.starts_with("?") {
             n_untracked += 1;
         }
     }
