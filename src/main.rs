@@ -85,9 +85,17 @@ fn main() {
         })
         .filter(|s| !s.is_empty())
         .collect();
-    if json {
-        println!("{{\"items\": [{}]}}", outs.join(","));
+    if outs.is_empty() {
+        if json {
+            println!(r#"{{"items": [{{"title": "NO ITEMS"}}]}}"#);
+        } else {
+            println!("No output");
+        }
     } else {
-        println!("{}", outs.join("\n"));
+        if json {
+            println!("{{\"items\": [{}]}}", outs.join(","));
+        } else {
+            println!("{}", outs.join("\n"));
+        }
     }
 }
