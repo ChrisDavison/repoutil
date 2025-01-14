@@ -1,54 +1,96 @@
-use clap::{Parser, Subcommand};
+use anyhow::{anyhow, Result};
 use rayon::prelude::*;
 use std::path::PathBuf;
 
 mod git;
 mod util;
 
-#[derive(Debug, Parser)]
-#[command(name = "repoutil", about = "Operations on multiple git repos")]
-struct Cli {
-    #[command(subcommand)]
-    command: Command,
-    /// Use JSON rather than plaintext output
-    #[arg(long, short)]
-    json: bool,
-}
-
-#[derive(Debug, Subcommand, PartialEq)]
+#[derive(PartialEq)]
 enum Command {
     /// Push commits
-    #[command(alias = "p")]
     Push,
     /// Fetch commits and tags
-    #[command(alias = "f")]
     Fetch,
     /// Show short status
-    #[command(alias = "s")]
     Stat,
     /// List tracked repos
-    #[command(alias = "l")]
     List,
     /// List repos with local changes
-    #[command(alias = "u")]
     Unclean,
     /// List short status of all branches
-    #[command(alias = "bs")]
     Branchstat,
     /// List all branches
-    #[command(alias = "b")]
     Branches,
     /// List all untracked folders
-    #[command(alias = "un")]
     Untracked,
 }
 
+fn print_help() {
+    println!(
+        "usage: repoutil COMMAND [-j|--json]
+
+commands:
+    p push
+        Push commits
+    f fetch
+        Fetch commits and tags
+    s stat status
+        Short status
+    l ls list
+        List repos found
+    u unclean
+        List repos with changes
+    bs branchstat
+        List short status of all branches
+    b branches
+        List branches
+    un untracked
+        List all untracked repos
+"
+    );
+}
+
+fn parse_args() -> Result<(Command, bool)> {
+    let mut use_json = false;
+    let mut words = Vec::new();
+    for arg in std::env::args().skip(1) {
+        if matches!(arg.as_str(), "-j" | "-json" | "--json" | "--j") {
+            use_json = true;
+        } else {
+            words.push(arg)
+        }
+    }
+    if words.is_empty() {
+        Err(anyhow!("No command given."))
+    } else if words.len() > 1 {
+        Err(anyhow!("Too many arguments? {words:?}"))
+    } else {
+        let w = words[0].to_lowercase();
+        match w.as_str() {
+            "p" | "push" => Ok((Command::Push, use_json)),
+            "f" | "fetch" => Ok((Command::Fetch, use_json)),
+            "s" | "stat" | "status" => Ok((Command::Stat, use_json)),
+            "l" | "ls" | "list" => Ok((Command::List, use_json)),
+            "u" | "unclean" | "dirty" => Ok((Command::Unclean, use_json)),
+            "bs" | "branchstat" => Ok((Command::Branchstat, use_json)),
+            "b" | "branches" | "branch" => Ok((Command::Branches, use_json)),
+            "un" | "untracked" => Ok((Command::Untracked, use_json)),
+            _ => Err(anyhow!("Unrecognised command `{w}`")),
+        }
+    }
+}
+
 fn main() {
-    let opts = Cli::parse();
+    let (command, json) = match parse_args() {
+        Ok((command, json)) => (command, json),
+        Err(e) => {
+            print_help();
+            println!("{}", e);
+            std::process::exit(1);
+        }
+    };
 
-    let json = opts.json;
-
-    let cmd = match opts.command {
+    let cmd = match command {
         Command::Push => git::push,
         Command::Fetch => git::fetch,
         Command::Stat => git::stat,
@@ -66,7 +108,7 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let repos = if opts.command == Command::Untracked {
+    let repos = if command == Command::Untracked {
         excludes
     } else {
         includes
@@ -75,7 +117,7 @@ fn main() {
     let common = util::common_ancestor(&repos);
     let outs: Vec<_> = repos
         .par_iter()
-        .filter_map(|repo| match (opts.json, cmd(repo)) {
+        .filter_map(|repo| match (json, cmd(repo)) {
             (false, Ok(rr)) => rr.plain(&common),
             (true, Ok(rr)) => rr.json(&common),
             (_, Err(e)) => {
