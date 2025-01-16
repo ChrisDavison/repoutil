@@ -108,6 +108,7 @@ fn main() {
             std::process::exit(1);
         }
     };
+
     let repos = if command == Command::Untracked {
         excludes
     } else {
@@ -128,17 +129,10 @@ fn main() {
         })
         .filter(|s| !s.is_empty())
         .collect();
-    if outs.is_empty() {
-        if json {
-            println!(r#"{{"items": [{{"title": "NO ITEMS"}}]}}"#);
-        } else {
-            println!("No output");
-        }
-    } else {
-        if json {
-            println!("{{\"items\": [{}]}}", outs.join(","));
-        } else {
-            println!("{}", outs.join("\n"));
-        }
+    match (json, outs.is_empty()) {
+        (true, true) => println!(r#"{{"items": [{{"title": "NO ITEMS"}}]}}"#),
+        (true, false) => println!("{{\"items\": [{}]}}", outs.join(",")),
+        (false, false) => println!("{}", outs.join("\n")),
+        (false, true) => {}
     }
 }
