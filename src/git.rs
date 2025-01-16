@@ -105,44 +105,61 @@ fn command_output(dir: &PathBuf, command: &str) -> Result<Vec<String>> {
 /// Push all changes to the branch
 ///
 /// On success, returns nothing.
-pub fn push(p: &PathBuf) -> Result<GitOutput> {
-    command_output(p, "push --all --tags").map(|_| GitOutput::Push(p))
+pub fn push(p: &PathBuf) -> Result<Option<GitOutput>> {
+    command_output(p, "push --all --tags").map(|_| Some(GitOutput::Push(p)))
 }
 
 /// Fetch all branches of a git repo
-pub fn fetch(p: &PathBuf) -> Result<GitOutput> {
+pub fn fetch(p: &PathBuf) -> Result<Option<GitOutput>> {
     command_output(p, "fetch --all --tags --prune")?;
     branchstat(p)
 }
 
 /// Get the name of any repo with local or remote changes
-pub fn needs_attention(p: &PathBuf) -> Result<GitOutput> {
-    stat(p).map(|_| GitOutput::Unclean(p))
+pub fn needs_attention(p: &PathBuf) -> Result<Option<GitOutput>> {
+    match stat(p) {
+        Ok(Some(GitOutput::Stat(name, lines))) => {
+            if lines.is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(GitOutput::Unclean(name)))
+            }
+        }
+        Ok(_) => unreachable!(),
+        Err(e) => Err(e),
+    }
+
+    // stat(p).map(|something| {
+    //     if let GitOutput::Stat(a, b) = something {
+    //         dbg!(a);
+    //         dbg!(b);
+    //             GitOutput::Unclean(p)
+    // })
 }
 
 /// List each repo found
-pub fn list(p: &PathBuf) -> Result<GitOutput> {
-    Ok(GitOutput::List(p))
+pub fn list(p: &PathBuf) -> Result<Option<GitOutput>> {
+    Ok(Some(GitOutput::List(p)))
 }
 
 /// List each untracked repo found
-pub fn untracked(p: &PathBuf) -> Result<GitOutput> {
-    Ok(GitOutput::Untracked(p))
+pub fn untracked(p: &PathBuf) -> Result<Option<GitOutput>> {
+    Ok(Some(GitOutput::Untracked(p)))
 }
 
 /// Get the short status (ahead, behind, and modified files) of a repo
-pub fn stat(p: &PathBuf) -> Result<GitOutput> {
+pub fn stat(p: &PathBuf) -> Result<Option<GitOutput>> {
     let out_lines = command_output(p, "status -s -b")?;
     let status = if out_lines.is_empty() || out_lines[0].ends_with(']') {
         out_lines
     } else {
         out_lines[1..].to_vec()
     };
-    Ok(GitOutput::Stat(p, status))
+    Ok(Some(GitOutput::Stat(p, status)))
 }
 
 /// Get a list of branches for the given git path
-pub fn branches(p: &PathBuf) -> Result<GitOutput> {
+pub fn branches(p: &PathBuf) -> Result<Option<GitOutput>> {
     let mut branches: Vec<_> = command_output(p, "branch")?;
     branches.sort();
     branches.reverse();
@@ -151,11 +168,11 @@ pub fn branches(p: &PathBuf) -> Result<GitOutput> {
         .map(|x| x.trim().to_string())
         .collect::<Vec<_>>()
         .join(", ");
-    Ok(GitOutput::Branches(p, branches))
+    Ok(Some(GitOutput::Branches(p, branches)))
 }
 
 /// Get the status _of each branch_
-pub fn branchstat(p: &PathBuf) -> Result<GitOutput> {
+pub fn branchstat(p: &PathBuf) -> Result<Option<GitOutput>> {
     let mut response = command_output(p, "status --porcelain --ahead-behind -b")?.into_iter();
 
     let branch_line = response.next();
@@ -199,5 +216,5 @@ pub fn branchstat(p: &PathBuf) -> Result<GitOutput> {
         parts.push(format!("{}?", n_untracked))
     };
 
-    Ok(GitOutput::Branchstat(p, parts.join(", ")))
+    Ok(Some(GitOutput::Branchstat(p, parts.join(", "))))
 }

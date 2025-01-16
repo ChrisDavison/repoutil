@@ -118,8 +118,9 @@ fn main() {
     let outs: Vec<_> = repos
         .par_iter()
         .filter_map(|repo| match (json, cmd(repo)) {
-            (false, Ok(rr)) => rr.plain(&common),
-            (true, Ok(rr)) => rr.json(&common),
+            (_, Ok(None)) => None,
+            (false, Ok(Some(rr))) => rr.plain(&common),
+            (true, Ok(Some(rr))) => rr.json(&common),
             (_, Err(e)) => {
                 eprintln!("ERR `{}`: {}", repo.display(), e);
                 None
