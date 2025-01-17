@@ -116,19 +116,22 @@ fn main() {
     };
 
     let common = util::common_ancestor(&repos);
+    let formatter = if json { git::as_json } else { git::as_plain };
+
+    let fmt_output = |repo| match cmd(repo) {
+        Ok(output) => output.and_then(|r| formatter(r, &common)),
+        Err(e) => {
+            eprintln!("ERR `{}`: {}", repo.display(), e);
+            None
+        }
+    };
+
     let outs: Vec<_> = repos
         .par_iter()
-        .filter_map(|repo| match (json, cmd(repo)) {
-            (_, Ok(None)) => None,
-            (false, Ok(Some(rr))) => rr.plain(&common),
-            (true, Ok(Some(rr))) => rr.json(&common),
-            (_, Err(e)) => {
-                eprintln!("ERR `{}`: {}", repo.display(), e);
-                None
-            }
-        })
+        .filter_map(fmt_output)
         .filter(|s| !s.is_empty())
         .collect();
+
     match (json, outs.is_empty()) {
         (true, true) => println!(r#"{{"items": [{{"title": "NO ITEMS"}}]}}"#),
         (true, false) => println!("{{\"items\": [{}]}}", outs.join(",")),

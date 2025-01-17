@@ -14,6 +14,14 @@ pub enum GitOutput<'a> {
     Stat(&'a PathBuf, Vec<String>),
 }
 
+pub fn as_json(g: GitOutput, common_substr: &PathBuf) -> Option<String> {
+    g.json(common_substr)
+}
+
+pub fn as_plain(g: GitOutput, common_substr: &PathBuf) -> Option<String> {
+    g.plain(common_substr)
+}
+
 impl<'a> GitOutput<'a> {
     pub fn plain(&self, common_ancestor: &PathBuf) -> Option<String> {
         let f = |repo: &PathBuf| {
