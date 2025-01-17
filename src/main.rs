@@ -66,17 +66,18 @@ fn parse_args() -> Result<(Command, bool)> {
         Err(anyhow!("Too many arguments? {words:?}"))
     } else {
         let w = words[0].to_lowercase();
-        match w.as_str() {
-            "p" | "push" => Ok((Command::Push, use_json)),
-            "f" | "fetch" => Ok((Command::Fetch, use_json)),
-            "s" | "stat" | "status" => Ok((Command::Stat, use_json)),
-            "l" | "ls" | "list" => Ok((Command::List, use_json)),
-            "u" | "unclean" | "dirty" => Ok((Command::Unclean, use_json)),
-            "bs" | "branchstat" => Ok((Command::Branchstat, use_json)),
-            "b" | "branches" | "branch" => Ok((Command::Branches, use_json)),
-            "un" | "untracked" => Ok((Command::Untracked, use_json)),
-            _ => Err(anyhow!("Unrecognised command `{w}`")),
-        }
+        let cmd = match w.as_str() {
+            "p" | "push" => Command::Push,
+            "f" | "fetch" => Command::Fetch,
+            "s" | "stat" | "status" => Command::Stat,
+            "l" | "ls" | "list" => Command::List,
+            "u" | "unclean" | "dirty" => Command::Unclean,
+            "bs" | "branchstat" => Command::Branchstat,
+            "b" | "branches" | "branch" => Command::Branches,
+            "un" | "untracked" => Command::Untracked,
+            _ => return Err(anyhow!("Unrecognised command `{w}`")),
+        };
+        Ok((cmd, use_json))
     }
 }
 
