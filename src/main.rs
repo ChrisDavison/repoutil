@@ -23,6 +23,8 @@ enum Command {
     Branches,
     /// List all untracked folders
     Untracked,
+    /// Add the current directory to ~/.repoutilrc
+    Add,
 }
 
 fn print_help() {
@@ -46,6 +48,8 @@ commands:
         List branches
     un untracked
         List all untracked repos
+    a add
+        Add the current working directory to ~/.repoutilrc
 "
     );
 }
@@ -75,6 +79,7 @@ fn parse_args() -> Result<(Command, bool)> {
             "bs" | "branchstat" => Command::Branchstat,
             "b" | "branches" | "branch" => Command::Branches,
             "un" | "untracked" => Command::Untracked,
+            "a" | "add" => Command::Add,
             _ => return Err(anyhow!("Unrecognised command `{w}`")),
         };
         Ok((cmd, use_json))
@@ -115,7 +120,13 @@ fn main() {
         Command::Branchstat => git::branchstat,
         Command::Branches => git::branches,
         Command::Untracked => git::untracked,
-        Command::Add => git::add,
+        Command::Add => {
+            if let Err(e) = git::add() {
+                println!("{}", e);
+                std::process::exit(1);
+            }
+            return;
+        }
     };
 
     let formatter = if json { git::as_json } else { git::as_plain };

@@ -1,5 +1,6 @@
 use crate::PathBuf;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
+use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 
@@ -225,4 +226,22 @@ pub fn branchstat(p: &PathBuf) -> Result<Option<GitOutput>> {
     };
 
     Ok(Some(GitOutput::Branchstat(p, parts.join(", "))))
+}
+
+pub fn add() -> Result<()> {
+    let config_filename = crate::util::homedir(".repoutilrc")?;
+    let curdir = std::env::current_dir()?;
+    if is_git_repo(&curdir) {
+        let mut file = std::fs::OpenOptions::new()
+            .append(true)
+            .open(config_filename)
+            .unwrap();
+
+        if let Err(e) = writeln!(file, "{}", curdir.to_string_lossy()) {
+            eprintln!("Couldn't write to file: {}", e);
+        }
+        Ok(())
+    } else {
+        Err(anyhow!("Don't appear to be in the root of a git repo."))
+    }
 }
