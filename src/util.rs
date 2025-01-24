@@ -4,12 +4,12 @@ use std::path::{Path, PathBuf};
 
 use crate::git;
 
-fn homedir(s: &str) -> Result<PathBuf> {
+pub fn homedir(s: &str) -> Result<PathBuf> {
     let mut home = PathBuf::from(std::env::var("HOME")?);
     if s.contains("~") {
         let p = PathBuf::from(s);
         for cmp in p.components().skip(1) {
-            home.push(&cmp);
+            home.push(cmp);
         }
         Ok(home)
     } else {
@@ -53,11 +53,11 @@ pub fn get_dirs_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
     let mut excludes = Vec::new();
     for line in std::fs::read_to_string(p)?.lines() {
         if let Some(stripped) = line.strip_prefix('!') {
-            let path = homedir(&stripped)?;
+            let path = homedir(stripped)?;
             // Strip 'exclusion-marking' ! from start of path, and add to excludes list
             excludes.push(path);
         } else {
-            let path = homedir(&line)?;
+            let path = homedir(line)?;
             if !excludes.contains(&path) {
                 includes.push(path);
             }
