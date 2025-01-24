@@ -29,7 +29,7 @@ enum Command {
 
 fn print_help() {
     println!(
-        "usage: repoutil COMMAND [-j|--json]
+        "usage: repoutil COMMAND [-j|--json] [-d|--dont-strip-home]
 
 commands:
     p push
@@ -54,12 +54,21 @@ commands:
     );
 }
 
-fn parse_args() -> Result<(Command, bool)> {
+#[derive(Clone)]
+struct FormatOpts<'a> {
+    use_json: bool,
+    common_prefix: &'a PathBuf,
+}
+
+fn parse_args() -> Result<(Command, bool, bool)> {
     let mut use_json = false;
     let mut words = Vec::new();
+    let mut keep_home = false;
     for arg in std::env::args().skip(1) {
         if matches!(arg.as_str(), "-j" | "-json" | "--json" | "--j") {
             use_json = true;
+        } else if matches!(arg.as_str(), "-d" | "--dont-strip-home") {
+            keep_home = true;
         } else {
             words.push(arg)
         }
@@ -82,13 +91,13 @@ fn parse_args() -> Result<(Command, bool)> {
             "a" | "add" => Command::Add,
             _ => return Err(anyhow!("Unrecognised command `{w}`")),
         };
-        Ok((cmd, use_json))
+        Ok((cmd, use_json, keep_home))
     }
 }
 
 fn main() {
-    let (command, json) = match parse_args() {
-        Ok((command, json)) => (command, json),
+    let (command, json, keep_home) = match parse_args() {
+        Ok((command, json, keep_home)) => (command, json, keep_home),
         Err(e) => {
             print_help();
             println!("{}", e);
@@ -109,7 +118,16 @@ fn main() {
     } else {
         includes
     };
-    let common = util::common_ancestor(&repos);
+    let common = if keep_home {
+        PathBuf::new()
+    } else {
+        util::common_ancestor(&repos)
+    };
+
+    let fmt = FormatOpts {
+        use_json: json,
+        common_prefix: &common,
+    };
 
     let cmd = match command {
         Command::Push => git::push,
@@ -129,26 +147,15 @@ fn main() {
         }
     };
 
-    let formatter = if json { git::as_json } else { git::as_plain };
-
-    let fmt_output = |repo| match cmd(repo) {
-        Ok(output) => output.and_then(|r| formatter(r, &common)),
-        Err(e) => {
-            eprintln!("ERR `{}`: {}", repo.display(), e);
-            None
-        }
-    };
-
     let outs: Vec<_> = repos
         .par_iter()
-        .filter_map(fmt_output)
-        .filter(|s| !s.is_empty())
+        .filter_map(|repo| cmd(repo, &fmt).ok())
+        .filter_map(|r| r)
         .collect();
 
-    match (json, outs.is_empty()) {
-        (true, true) => println!(r#"{{"items": [{{"title": "NO ITEMS"}}]}}"#),
-        (true, false) => println!("{{\"items\": [{}]}}", outs.join(",")),
-        (false, false) => println!("{}", outs.join("\n")),
-        (false, true) => {}
+    if json {
+        println!(r#"{{"items": [{{{}}}]}}"#, outs.join(", "));
+    } else {
+        println!("{}", outs.join("\n"));
     }
 }
