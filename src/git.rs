@@ -22,7 +22,7 @@ pub fn as_plain(g: GitOutput, common_substr: &PathBuf) -> Option<String> {
     g.plain(common_substr)
 }
 
-impl<'a> GitOutput<'a> {
+impl GitOutput<'_> {
     pub fn plain(&self, common_ancestor: &PathBuf) -> Option<String> {
         let f = |repo: &PathBuf| {
             repo.strip_prefix(common_ancestor)
