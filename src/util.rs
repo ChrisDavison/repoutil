@@ -1,9 +1,19 @@
 use anyhow::{anyhow, Result};
-use shellexpand::tilde;
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
 
 use crate::git;
+
+fn homedir(s: &str) -> Result<PathBuf> {
+    let mut home = PathBuf::from(std::env::var("HOME")?);
+    let s = if s.contains("~") {
+        s.trim_start_matches("~/")
+    } else {
+        s
+    };
+    home.push(s);
+    Ok(home)
+}
 
 pub fn common_ancestor(ss: &[PathBuf]) -> PathBuf {
     if ss.len() == 1 {
@@ -28,11 +38,9 @@ pub fn common_ancestor(ss: &[PathBuf]) -> PathBuf {
     entry0.iter().take(idx).collect()
 }
 
-
-
 pub fn get_dirs_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
-    let repoutil_config = tilde("~/.repoutilrc").to_string();
-    let p = std::path::Path::new(&repoutil_config);
+    let p = homedir(".repoutilrc")?;
+    // let p = std::path::Path::new(&repoutil_config);
 
     if !p.exists() {
         return Err(anyhow!("No ~/.repoutilrc"));
@@ -42,11 +50,11 @@ pub fn get_dirs_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
     let mut excludes = Vec::new();
     for line in std::fs::read_to_string(p)?.lines() {
         if let Some(stripped) = line.strip_prefix('!') {
-            let path = PathBuf::from(tilde(&stripped).to_string());
+            let path = homedir(&stripped)?;
             // Strip 'exclusion-marking' ! from start of path, and add to excludes list
             excludes.push(path);
         } else {
-            let path = PathBuf::from(tilde(&line).to_string());
+            let path = homedir(&line)?;
             if !excludes.contains(&path) {
                 includes.push(path);
             }
