@@ -6,13 +6,16 @@ use crate::git;
 
 fn homedir(s: &str) -> Result<PathBuf> {
     let mut home = PathBuf::from(std::env::var("HOME")?);
-    let s = if s.contains("~") {
-        s.trim_start_matches("~/")
+    if s.contains("~") {
+        let p = PathBuf::from(s);
+        for cmp in p.components().skip(1) {
+            home.push(&cmp);
+        }
+        Ok(home)
     } else {
-        s
-    };
-    home.push(s);
-    Ok(home)
+        home.push(s);
+        Ok(home)
+    }
 }
 
 pub fn common_ancestor(ss: &[PathBuf]) -> PathBuf {
