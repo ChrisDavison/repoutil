@@ -4,15 +4,19 @@ use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 
-fn remove_common_ancestor(repo: &Path, common: &PathBuf) -> String {
-    repo.strip_prefix(common).unwrap().display().to_string()
+fn remove_common_ancestor(repo: &Path, common: Option<&PathBuf>) -> String {
+    if let Some(prefix) = common {
+        repo.strip_prefix(prefix).unwrap().display().to_string()
+    } else {
+        repo.display().to_string()
+    }
 }
 
 fn format_json(
     title: &Path,
     subtitle: Option<&str>,
     path_as_arg: bool,
-    common: &PathBuf,
+    common: Option<&PathBuf>,
 ) -> String {
     let arg = if path_as_arg {
         title.display().to_string()

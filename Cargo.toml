@@ -11,4 +11,5 @@ description = "Wrapper around my common git commands"
 
 [dependencies]
 anyhow = "1.0"
+clap = { version = "4.5.27", features = ["derive"] }
 rayon = "1.10.0"
