@@ -91,17 +91,6 @@ fn main() {
         }
     };
 
-    let cmd = match command {
-        Command::Push => git::push,
-        Command::Fetch => git::fetch,
-        Command::Stat => git::stat,
-        Command::List => git::list,
-        Command::Unclean => git::needs_attention,
-        Command::Branchstat => git::branchstat,
-        Command::Branches => git::branches,
-        Command::Untracked => git::untracked,
-    };
-
     let (includes, excludes) = match util::get_repos_from_config() {
         Ok((i, e)) => (i, e),
         Err(err) => {
@@ -115,8 +104,20 @@ fn main() {
     } else {
         includes
     };
-
     let common = util::common_ancestor(&repos);
+
+    let cmd = match command {
+        Command::Push => git::push,
+        Command::Fetch => git::fetch,
+        Command::Stat => git::stat,
+        Command::List => git::list,
+        Command::Unclean => git::needs_attention,
+        Command::Branchstat => git::branchstat,
+        Command::Branches => git::branches,
+        Command::Untracked => git::untracked,
+        Command::Add => git::add,
+    };
+
     let formatter = if json { git::as_json } else { git::as_plain };
 
     let fmt_output = |repo| match cmd(repo) {
