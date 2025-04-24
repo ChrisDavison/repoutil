@@ -90,14 +90,16 @@ pub fn get_repos_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
         if git::is_git_repo(&dir) {
             includes.push(dir);
         } else {
-            let repos = match get_repos_from_dir(&dir) {
-                Ok(r) => r,
-                Err(e) => {
-                    eprintln!("Couldn't get repos from '{:?}': '{}'\n", dir, e);
-                    continue;
-                }
-            };
-            includes.extend(repos.iter().map(|p| p.to_path_buf()));
+            if let Ok(repos) = get_repos_from_dir(&dir) {
+                includes.extend(repos.iter().map(|p| p.to_path_buf()));
+            }
+            // let repos = match get_repos_from_dir(&dir) {
+            //     Ok(r) => r,
+            //     Err(e) => {
+            //         eprintln!("Couldn't get repos from '{:?}': '{}'\n", dir, e);
+            //         continue;
+            //     }
+            // };
         }
     }
     includes.sort();
