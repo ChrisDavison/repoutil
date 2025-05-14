@@ -107,7 +107,8 @@ fn main() {
         .collect();
 
     if args.use_json {
-        println!(r#"{{"items": [{{{}}}]}}"#, outs.join(", "));
+        dbg!(&outs);
+        println!(r#"{{"items": [{}]}}"#, outs.join(", "));
     } else {
         println!("{}", outs.join("\n"));
     }
