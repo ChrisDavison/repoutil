@@ -1,4 +1,5 @@
 use crate::{FormatOpts, PathBuf};
+
 use anyhow::{anyhow, Result};
 use std::io::Write;
 use std::path::Path;
@@ -35,6 +36,36 @@ pub fn is_git_repo(p: &Path) -> bool {
     let mut p = p.to_path_buf();
     p.push(".git");
     p.exists()
+}
+
+pub fn jjsync(dir: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
+    Command::new("jj")
+        .current_dir(dir)
+        .args(&["sync"])
+        .output()?;
+    Ok(None)
+}
+
+pub fn jjstat(dir: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
+    let stdout = Command::new("jj")
+        .current_dir(dir)
+        .args(&["status", "--color=always"])
+        .output()?
+        .stdout;
+    let lines: Vec<&str> = std::str::from_utf8(&stdout)?.lines().collect();
+    if lines[0] == "The working copy has no changes." {
+        Ok(None)
+    } else {
+        Ok(Some(format!(
+            "{}\n{}\n",
+            dir.to_string_lossy().to_string(),
+            lines
+                .iter()
+                .map(|x| format!("    {x}"))
+                .collect::<Vec<_>>()
+                .join("\n")
+        )))
+    }
 }
 
 // Run a git command and return the lines of the output

@@ -38,6 +38,12 @@ enum Command {
     /// List short status of all branches
     #[command(aliases = &["bs"])]
     Branchstat,
+    /// JJ status
+    #[command(aliases = &["jj"])]
+    JjStat,
+    /// JJ sync all repos
+    #[command(aliases = &["jjs"])]
+    JjSync,
     /// List all branches
     #[command(aliases = &["b"])]
     Branches,
@@ -89,6 +95,8 @@ fn main() {
         Command::List => git::list,
         Command::Unclean => git::needs_attention,
         Command::Branchstat => git::branchstat,
+        Command::JjStat => git::jjstat,
+        Command::JjSync => git::jjsync,
         Command::Branches => git::branches,
         Command::Untracked => git::untracked,
         Command::Add => {
