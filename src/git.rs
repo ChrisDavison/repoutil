@@ -43,7 +43,8 @@ pub fn jjsync(dir: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
         .current_dir(dir)
         .args(&["sync"])
         .output()?;
-    Ok(None)
+
+    jjstat(dir, _fmt)
 }
 
 pub fn jjstat(dir: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
