@@ -53,7 +53,9 @@ pub fn jjstat(dir: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
         .output()?
         .stdout;
     let lines: Vec<&str> = std::str::from_utf8(&stdout)?.lines().collect();
-    if lines[0] == "The working copy has no changes." {
+    if lines.is_empty() {
+        Ok(None)
+    } else if lines[0] == "The working copy has no changes." {
         Ok(None)
     } else {
         Ok(Some(format!(
