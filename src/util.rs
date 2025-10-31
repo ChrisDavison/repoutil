@@ -93,13 +93,6 @@ pub fn get_repos_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
             if let Ok(repos) = get_repos_from_dir(&dir) {
                 includes.extend(repos.iter().map(|p| p.to_path_buf()));
             }
-            // let repos = match get_repos_from_dir(&dir) {
-            //     Ok(r) => r,
-            //     Err(e) => {
-            //         eprintln!("Couldn't get repos from '{:?}': '{}'\n", dir, e);
-            //         continue;
-            //     }
-            // };
         }
     }
     includes.sort();

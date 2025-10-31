@@ -32,12 +32,27 @@ fn format_json(
     format!(r#"{{{fields}}}"#)
 }
 
+
+// Run a git command and return the lines of the output
+fn command_output(dir: &Path, command: &str) -> Result<Vec<String>> {
+    let stdout = Command::new("git")
+        .current_dir(dir)
+        .args(command.split(' '))
+        .output()?
+        .stdout;
+    Ok(std::str::from_utf8(&stdout)?
+        .lines()
+        .map(|x| x.to_string())
+        .collect())
+}
+
 pub fn is_git_repo(p: &Path) -> bool {
     let mut p = p.to_path_buf();
     p.push(".git");
     p.exists()
 }
 
+/// Sync jujutsu repo
 pub fn jjsync(dir: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
     Command::new("jj")
         .current_dir(dir)
@@ -47,6 +62,7 @@ pub fn jjsync(dir: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
     jjstat(dir, _fmt)
 }
 
+/// Show jujutsu status
 pub fn jjstat(dir: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
     let stdout = Command::new("jj")
         .current_dir(dir)
@@ -71,22 +87,7 @@ pub fn jjstat(dir: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
     }
 }
 
-// Run a git command and return the lines of the output
-fn command_output(dir: &Path, command: &str) -> Result<Vec<String>> {
-    let stdout = Command::new("git")
-        .current_dir(dir)
-        .args(command.split(' '))
-        .output()?
-        .stdout;
-    Ok(std::str::from_utf8(&stdout)?
-        .lines()
-        .map(|x| x.to_string())
-        .collect())
-}
-
 /// Push all changes to the branch
-///
-/// On success, returns nothing.
 pub fn push(p: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
     command_output(p, "push --all --tags")?;
     Ok(None)
