@@ -15,6 +15,8 @@ struct Cli {
     #[arg(short, long)]
     use_json: bool,
     #[arg(short, long)]
+    no_colour: bool,
+    #[arg(short, long)]
     keep_home: bool,
 }
 
@@ -63,6 +65,7 @@ enum Command {
 struct FormatOpts<'a> {
     use_json: bool,
     common_prefix: Option<&'a PathBuf>,
+    no_colour: bool,
 }
 
 fn main() {
@@ -90,6 +93,7 @@ fn main() {
     let fmt = FormatOpts {
         use_json: args.use_json,
         common_prefix: if args.keep_home { None } else { Some(&common) },
+        no_colour: args.no_colour,
     };
 
     let cmd = match args.command {
@@ -120,7 +124,6 @@ fn main() {
         .collect();
 
     if args.use_json {
-        dbg!(&outs);
         println!(r#"{{"items": [{}]}}"#, outs.join(", "));
     } else {
         println!("{}", outs.join("\n"));

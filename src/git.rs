@@ -186,7 +186,7 @@ pub fn dashboard(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     if let Ok(Some(_)) = needs_attention(p, fmt) {
         let resp = command_output(p, "dashboard --color=always")?;
         Ok(Some(format!(
-            "\n\x1b[1;31m {} {}\x1b[0m\n{}",
+            "\n\x1b[1;31m{} {}\x1b[0m\n{}",
             remove_common_ancestor(p, fmt.common_prefix),
             "*".repeat(20),
             resp.iter()
@@ -211,12 +211,11 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         // We're already filtering on contains, so safe to unwrap
         let start = response.find('[').unwrap();
         let end = response.find(']').unwrap();
-        parts.push(text::blue(
-            response[start + 1..end]
-                .replace("ahead ", "↑")
-                .replace("behind ", "↓")
-                .to_string(),
-        ))
+        let s = response[start + 1..end]
+            .replace("ahead ", "↑")
+            .replace("behind ", "↓")
+            .to_string();
+        parts.push(if fmt.no_colour { s } else { text::blue(s) })
     }
 
     // Now go through each file reported, and count modified or untracked
@@ -238,10 +237,12 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     }
 
     if n_modified > 0 {
-        parts.push(text::green(format!("{}±", n_modified)))
+        let s = format!("{}±", n_modified);
+        parts.push(if fmt.no_colour { s } else { text::green(s) })
     };
     if n_untracked > 0 {
-        parts.push(text::yellow(format!("{}?", n_untracked)))
+        let s = format!("{}?", n_untracked);
+        parts.push(if fmt.no_colour { s } else { text::yellow(s) })
     };
 
     let joined = parts.join(", ");
@@ -253,9 +254,14 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     let s = if fmt.use_json {
         format_json(p, Some(&joined), true, fmt.common_prefix)
     } else {
+        let s = remove_common_ancestor(p, fmt.common_prefix);
         format!(
             "{:40} | {}",
-            text::bold(text::red(remove_common_ancestor(p, fmt.common_prefix))),
+            if fmt.no_colour {
+                s
+            } else {
+                text::bold(text::red(s))
+            },
             joined
         )
     };
