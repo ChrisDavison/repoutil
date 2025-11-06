@@ -34,7 +34,6 @@ fn format_json(
     format!(r#"{{{fields}}}"#)
 }
 
-
 // Run a git command and return the lines of the output
 fn command_output(dir: &Path, command: &str) -> Result<Vec<String>> {
     let stdout = Command::new("git")
@@ -58,7 +57,7 @@ pub fn is_git_repo(p: &Path) -> bool {
 pub fn jjsync(dir: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
     Command::new("jj")
         .current_dir(dir)
-        .args(&["sync"])
+        .args(["sync"])
         .output()?;
 
     jjstat(dir, _fmt)
@@ -68,18 +67,16 @@ pub fn jjsync(dir: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
 pub fn jjstat(dir: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
     let stdout = Command::new("jj")
         .current_dir(dir)
-        .args(&["status", "--color=always"])
+        .args(["status", "--color=always"])
         .output()?
         .stdout;
     let lines: Vec<&str> = std::str::from_utf8(&stdout)?.lines().collect();
     if lines.is_empty() {
         Ok(None)
-    } else if lines[0] == "The working copy has no changes." {
-        Ok(None)
     } else {
         Ok(Some(format!(
             "{}\n{}\n",
-            dir.to_string_lossy().to_string(),
+            dir.to_string_lossy(),
             lines
                 .iter()
                 .map(|x| format!("    {x}"))
@@ -219,7 +216,7 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
                 .replace("ahead ", "↑")
                 .replace("behind ", "↓")
                 .to_string(),
-        )
+        ))
     }
 
     // Now go through each file reported, and count modified or untracked

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use anyhow::{anyhow, Result};
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
@@ -111,10 +112,8 @@ pub fn get_repos_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
     for dir in inc {
         if git::is_git_repo(&dir) {
             includes.push(dir);
-        } else {
-            if let Ok(repos) = get_repos_from_dir(&dir) {
-                includes.extend(repos.iter().map(|p| p.to_path_buf()));
-            }
+        } else if let Ok(repos) = get_repos_from_dir(&dir) {
+            includes.extend(repos.iter().map(|p| p.to_path_buf()));
         }
     }
     includes.sort();
