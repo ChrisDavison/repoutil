@@ -53,6 +53,10 @@ enum Command {
     /// Add the current directory to ~/.repoutilrc
     #[command(aliases = &["a"])]
     Add,
+
+    /// Display git dashboard
+    #[command(aliases = &["d"])]
+    Dashboard,
 }
 
 #[derive(Clone)]
@@ -99,6 +103,7 @@ fn main() {
         Command::JjSync => git::jjsync,
         Command::Branches => git::branches,
         Command::Untracked => git::untracked,
+        Command::Dashboard => git::dashboard,
         Command::Add => {
             if let Err(e) = git::add() {
                 println!("{}", e);

@@ -185,6 +185,23 @@ pub fn branches(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     Ok(Some(s))
 }
 
+pub fn dashboard(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
+    if let Ok(Some(_)) = needs_attention(p, fmt) {
+        let resp = command_output(p, "dashboard --color=always")?;
+        Ok(Some(format!(
+            "\n\x1b[1;31m {} {}\x1b[0m\n{}",
+            remove_common_ancestor(p, fmt.common_prefix),
+            "*".repeat(20),
+            resp.iter()
+                .map(|l| format!("  {l}"))
+                .collect::<Vec<_>>()
+                .join("\n")
+        )))
+    } else {
+        Ok(None)
+    }
+}
+
 /// Get the status _of each branch_
 pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     let mut response = command_output(p, "status --porcelain --ahead-behind -b")?.into_iter();
