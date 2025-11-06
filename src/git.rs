@@ -5,6 +5,8 @@ use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 
+use crate::util::text;
+
 fn remove_common_ancestor(repo: &Path, common: Option<&PathBuf>) -> String {
     if let Some(prefix) = common {
         repo.strip_prefix(prefix).unwrap().display().to_string()
@@ -195,7 +197,7 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         // We're already filtering on contains, so safe to unwrap
         let start = response.find('[').unwrap();
         let end = response.find(']').unwrap();
-        parts.push(
+        parts.push(text::blue(
             response[start + 1..end]
                 .replace("ahead ", "↑")
                 .replace("behind ", "↓")
@@ -222,10 +224,10 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     }
 
     if n_modified > 0 {
-        parts.push(format!("{}±", n_modified))
+        parts.push(text::green(format!("{}±", n_modified)))
     };
     if n_untracked > 0 {
-        parts.push(format!("{}?", n_untracked))
+        parts.push(text::yellow(format!("{}?", n_untracked)))
     };
 
     let joined = parts.join(", ");
@@ -238,8 +240,8 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         format_json(p, Some(&joined), true, fmt.common_prefix)
     } else {
         format!(
-            "{:30} | {}",
-            remove_common_ancestor(p, fmt.common_prefix),
+            "{:40} | {}",
+            text::bold(text::red(remove_common_ancestor(p, fmt.common_prefix))),
             joined
         )
     };
