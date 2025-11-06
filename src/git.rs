@@ -65,18 +65,30 @@ pub fn jjsync(dir: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
 
 /// Show jujutsu status
 pub fn jjstat(dir: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
+    let no_modified = std::str::from_utf8(
+        &Command::new("git")
+            .current_dir(dir)
+            .args(["status", "-s", "-b"])
+            .output()?
+            .stdout,
+    )?
+    .lines()
+    .collect::<Vec<_>>()
+    .len()
+        == 1;
     let stdout = Command::new("jj")
         .current_dir(dir)
         .args(["status", "--color=always"])
         .output()?
         .stdout;
     let lines: Vec<&str> = std::str::from_utf8(&stdout)?.lines().collect();
-    if lines.is_empty() {
+    if lines.is_empty() || no_modified {
         Ok(None)
     } else {
         Ok(Some(format!(
-            "{}\n{}\n",
-            dir.to_string_lossy(),
+            "{} {}\n{}\n",
+            text::bold(text::red(dir.to_string_lossy())),
+            text::bold(text::red("·".repeat(40))),
             lines
                 .iter()
                 .map(|x| format!("    {x}"))
