@@ -39,10 +39,10 @@ enum Command {
     #[command(aliases = &["bs"])]
     Branchstat,
     /// JJ status
-    #[command(aliases = &["jj"])]
+    #[command(aliases = &["jj"], hide=true)]
     JjStat,
     /// JJ sync all repos
-    #[command(aliases = &["jjs"])]
+    #[command(aliases = &["jjs"], hide=true)]
     JjSync,
     /// List all branches
     #[command(aliases = &["b"])]
