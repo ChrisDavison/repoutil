@@ -200,7 +200,7 @@ pub fn dashboard(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         Ok(Some(format!(
             "\n\x1b[1;31m{} {}\x1b[0m\n{}",
             remove_common_ancestor(p, fmt.common_prefix),
-            "*".repeat(20),
+            "·".repeat(20),
             resp.iter()
                 .map(|l| format!("  {l}"))
                 .collect::<Vec<_>>()
