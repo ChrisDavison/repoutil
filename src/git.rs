@@ -47,6 +47,19 @@ fn command_output(dir: &Path, command: &str) -> Result<Vec<String>> {
         .collect())
 }
 
+// Run a git command and return the lines of the output
+fn jj_command_output(dir: &Path, command: &str) -> Result<Vec<String>> {
+    let stdout = Command::new("jj")
+        .current_dir(dir)
+        .args(command.split(' '))
+        .output()?
+        .stdout;
+    Ok(std::str::from_utf8(&stdout)?
+        .lines()
+        .map(|x| x.to_string())
+        .collect())
+}
+
 pub fn is_git_repo(p: &Path) -> bool {
     let mut p = p.to_path_buf();
     p.push(".git");
@@ -214,6 +227,8 @@ pub fn dashboard(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
 /// Get the status _of each branch_
 pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     let mut response = command_output(p, "status --porcelain --ahead-behind -b")?.into_iter();
+    let jjm = jj_command_output(p, "list_mut")?;
+    let jj_mutable = jjm.into_iter().len();
 
     let branch_line = response.next();
 
@@ -256,6 +271,11 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         let s = format!("{}?", n_untracked);
         parts.push(if fmt.no_colour { s } else { text::yellow(s) })
     };
+
+    if jj_mutable != 0 {
+        let s = format!("{}▲", jj_mutable);
+        parts.push(if fmt.no_colour { s } else { text::yellow(s) })
+    }
 
     let joined = parts.join(", ");
 
