@@ -5,27 +5,7 @@ use std::path::{Path, PathBuf};
 
 use crate::git;
 
-pub mod text {
-    pub fn blue(s: impl Into<String> + std::fmt::Display) -> String {
-        format!("\x1b[0;34m{s}\x1b[0m")
-    }
 
-    pub fn yellow(s: impl Into<String> + std::fmt::Display) -> String {
-        format!("\x1b[0;33m{s}\x1b[0m")
-    }
-
-    pub fn green(s: impl Into<String> + std::fmt::Display) -> String {
-        format!("\x1b[0;32m{s}\x1b[0m")
-    }
-
-    pub fn red(s: impl Into<String> + std::fmt::Display) -> String {
-        format!("\x1b[0;31m{s}\x1b[0m")
-    }
-
-    pub fn bold(s: impl Into<String> + std::fmt::Display) -> String {
-        format!("\x1b[1{s}\x1b[0m")
-    }
-}
 
 pub fn homedir(s: &str) -> Result<PathBuf> {
     let mut home = PathBuf::from(std::env::var("HOME")?);

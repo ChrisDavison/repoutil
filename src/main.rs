@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 mod git;
 mod util;
+mod ansi_escape;
 
 /// A fictional versioning CLI
 #[derive(Debug, Parser)] // requires `derive` feature

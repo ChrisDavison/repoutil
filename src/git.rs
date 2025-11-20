@@ -5,7 +5,7 @@ use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 
-use crate::util::text;
+use crate::ansi_escape::*;
 
 fn remove_common_ancestor(repo: &Path, common: Option<&PathBuf>) -> String {
     if let Some(prefix) = common {
@@ -98,13 +98,14 @@ pub fn jjstat(dir: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
     if lines.is_empty() || no_modified {
         Ok(None)
     } else {
+        let s = dir.to_string_lossy().to_string();
         Ok(Some(format!(
             "{} {}\n{}\n",
-            text::bold(text::red(dir.to_string_lossy())),
-            text::bold(text::red("·".repeat(40))),
+            colour(BGColour::IntenseGreen + Colour::Black, format!(" {s} ")),
+            colour(ColourAttribute::Bold + Colour::Red,"·".repeat(0)),
             lines
                 .iter()
-                .map(|x| format!("    {x}"))
+                .map(|x| format!("  {x}"))
                 .collect::<Vec<_>>()
                 .join("\n")
         )))
@@ -211,9 +212,9 @@ pub fn dashboard(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     if let Ok(Some(_)) = needs_attention(p, fmt) {
         let resp = command_output(p, "dashboard --color=always")?;
         Ok(Some(format!(
-            "\n\x1b[1;31m{} {}\x1b[0m\n{}",
+            "\n\x1b[42m\x1b[1;30m {} {}\x1b[0m\n{}",
             remove_common_ancestor(p, fmt.common_prefix),
-            "·".repeat(20),
+            "·".repeat(0),
             resp.iter()
                 .map(|l| format!("  {l}"))
                 .collect::<Vec<_>>()
@@ -242,7 +243,7 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
             .replace("ahead ", "↑")
             .replace("behind ", "↓")
             .to_string();
-        parts.push(if fmt.no_colour { s } else { text::blue(s) })
+        parts.push(if fmt.no_colour { s } else { colour(Colour::Blue, s) })
     }
 
     // Now go through each file reported, and count modified or untracked
@@ -265,16 +266,16 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
 
     if n_modified > 0 {
         let s = format!("{}±", n_modified);
-        parts.push(if fmt.no_colour { s } else { text::green(s) })
+        parts.push(if fmt.no_colour { s } else { colour(Colour::Green, s) })
     };
     if n_untracked > 0 {
         let s = format!("{}?", n_untracked);
-        parts.push(if fmt.no_colour { s } else { text::yellow(s) })
+        parts.push(if fmt.no_colour { s } else { colour(Colour::Yellow, s) })
     };
 
     if jj_mutable != 0 {
         let s = format!("{}▲", jj_mutable);
-        parts.push(if fmt.no_colour { s } else { text::yellow(s) })
+        parts.push(if fmt.no_colour { s } else { colour(Colour::Yellow, s) })
     }
 
     let joined = parts.join(", ");
@@ -292,7 +293,7 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
             if fmt.no_colour {
                 s
             } else {
-                text::bold(text::red(s))
+                colour(ColourAttribute::Bold + Colour::Red,s)
             },
             joined
         )
