@@ -101,8 +101,8 @@ pub fn jjstat(dir: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
         let s = dir.to_string_lossy().to_string();
         Ok(Some(format!(
             "{} {}\n{}\n",
-            colour(BGColour::IntenseGreen + Colour::Black, format!(" {s} ")),
-            colour(ColourAttribute::Bold + Colour::Red,"·".repeat(0)),
+            colour(format!(" {s} "), &[BGIntenseGreen, Black]),
+            colour("·".repeat(0), &[Bold, Red]),
             lines
                 .iter()
                 .map(|x| format!("  {x}"))
@@ -235,6 +235,7 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
 
     // Get the 'ahead/behind' status
     let mut parts = Vec::new();
+    let colours = if fmt.no_colour { vec![] } else { vec![Blue] };
     if let Some(response) = branch_line.filter(|x| x.contains('[')) {
         // We're already filtering on contains, so safe to unwrap
         let start = response.find('[').unwrap();
@@ -243,7 +244,7 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
             .replace("ahead ", "↑")
             .replace("behind ", "↓")
             .to_string();
-        parts.push(if fmt.no_colour { s } else { colour(Colour::Blue, s) })
+        parts.push(colour(s, &colours))
     }
 
     // Now go through each file reported, and count modified or untracked
@@ -266,16 +267,28 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
 
     if n_modified > 0 {
         let s = format!("{}±", n_modified);
-        parts.push(if fmt.no_colour { s } else { colour(Colour::Green, s) })
+        parts.push(if fmt.no_colour {
+            s
+        } else {
+            colour(s, &[Green])
+        })
     };
     if n_untracked > 0 {
         let s = format!("{}?", n_untracked);
-        parts.push(if fmt.no_colour { s } else { colour(Colour::Yellow, s) })
+        parts.push(if fmt.no_colour {
+            s
+        } else {
+            colour(s, &[Yellow])
+        })
     };
 
     if jj_mutable != 0 {
         let s = format!("{}▲", jj_mutable);
-        parts.push(if fmt.no_colour { s } else { colour(Colour::Yellow, s) })
+        parts.push(if fmt.no_colour {
+            s
+        } else {
+            colour(s, &[Yellow])
+        })
     }
 
     let joined = parts.join(", ");
@@ -293,7 +306,7 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
             if fmt.no_colour {
                 s
             } else {
-                colour(ColourAttribute::Bold + Colour::Red,s)
+                colour(s, &[Bold, Red])
             },
             joined
         )

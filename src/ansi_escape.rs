@@ -1,234 +1,50 @@
-pub enum ColourAttribute {
-    Bold,
-    Dim,
-    Italic,
-    Underline,
-}
+#![allow(dead_code)]
 
-// ESC[mode1m
-// ESC[mode1;mode2m
-// ESC[mode1;mode2;mode3m
-// ...so take a list of modes and sum them
-// if combining text colours, keep rightmost
-// if combining bg colours, keep rightmost
-// if combining text and bg colours, keep rightmost of each
+// Colour attributes
+pub const Bold: &str = "\x1b[1m";
+pub const Dim: &str = "\x1b[2m";
+pub const Italic: &str = "\x1b[3m";
+pub const Underline: &str = "\x1b[4m";
 
-// BG Colour
-impl std::ops::Add<BGColour> for BGColour {
-    type Output = String;
-    fn add(self, other: BGColour) -> String {
-        format!("{self}{other}")
-    }
-}
+// Foreground colours
+pub const Black: &str = "\x1b[30m";
+pub const Red: &str = "\x1b[31m";
+pub const Green: &str = "\x1b[32m";
+pub const Yellow: &str = "\x1b[33m";
+pub const Blue: &str = "\x1b[34m";
+pub const Purple: &str = "\x1b[35m";
+pub const Cyan: &str = "\x1b[36m";
+pub const White: &str = "\x1b[37m";
+pub const IntenseBlack: &str = "\x1b[90m";
+pub const IntenseRed: &str = "\x1b[91m";
+pub const IntenseGreen: &str = "\x1b[92m";
+pub const IntenseYellow: &str = "\x1b[93m";
+pub const IntenseBlue: &str = "\x1b[94m";
+pub const IntensePurple: &str = "\x1b[95m";
+pub const IntenseCyan: &str = "\x1b[96m";
+pub const IntenseWhite: &str = "\x1b[97m";
 
-impl std::ops::Add<Colour> for BGColour {
-    type Output = String;
-    fn add(self, other: Colour) -> String {
-        format!("{self}{other}")
-    }
-}
+// Background colours
+pub const BGBlack: &str = "\x1b[40m";
+pub const BGRed: &str = "\x1b[41m";
+pub const BGGreen: &str = "\x1b[42m";
+pub const BGYellow: &str = "\x1b[43m";
+pub const BGBlue: &str = "\x1b[44m";
+pub const BGPurple: &str = "\x1b[45m";
+pub const BGCyan: &str = "\x1b[46m";
+pub const BGWhite: &str = "\x1b[47m";
+pub const BGIntenseBlack: &str = "\x1b[100m";
+pub const BGIntenseRed: &str = "\x1b[101m";
+pub const BGIntenseGreen: &str = "\x1b[102m";
+pub const BGIntenseYellow: &str = "\x1b[103m";
+pub const BGIntenseBlue: &str = "\x1b[104m";
+pub const BGIntensePurple: &str = "\x1b[105m";
+pub const BGIntenseCyan: &str = "\x1b[106m";
+pub const BGIntenseWhite: &str = "\x1b[107m";
 
-impl std::ops::Add<ColourAttribute> for BGColour {
-    type Output = String;
-    fn add(self, other: ColourAttribute) -> String {
-        format!("{self}{other}")
-    }
-}
+const ANSI_RESET: &str = "\x1b[0m";
 
-// Colour
-impl std::ops::Add<BGColour> for Colour {
-    type Output = String;
-    fn add(self, other: BGColour) -> String {
-        format!("{self}{other}")
-    }
-}
-
-impl std::ops::Add<Colour> for Colour {
-    type Output = String;
-    fn add(self, other: Colour) -> String {
-        format!("{self}{other}")
-    }
-}
-
-impl std::ops::Add<ColourAttribute> for Colour {
-    type Output = String;
-    fn add(self, other: ColourAttribute) -> String {
-        format!("{self}{other}")
-    }
-}
-
-// ColourAttribute
-impl std::ops::Add<BGColour> for ColourAttribute {
-    type Output = String;
-    fn add(self, other: BGColour) -> String {
-        format!("{self}{other}")
-    }
-}
-
-impl std::ops::Add<Colour> for ColourAttribute {
-    type Output = String;
-    fn add(self, other: Colour) -> String {
-        format!("{self}{other}")
-    }
-}
-
-impl std::ops::Add<ColourAttribute> for ColourAttribute {
-    type Output = String;
-    fn add(self, other: ColourAttribute) -> String {
-        format!("{self}{other}")
-    }
-}
-
-pub enum BGColour {
-    // regular
-    Black,
-    Red,
-    Green,
-    Yellow,
-    Blue,
-    Purple,
-    Cyan,
-    White,
-    // intense
-    IntenseBlack,
-    IntenseRed,
-    IntenseGreen,
-    IntenseYellow,
-    IntenseBlue,
-    IntensePurple,
-    IntenseCyan,
-    IntenseWhite,
-}
-
-pub enum Colour {
-    // regular
-    Black,
-    Red,
-    Green,
-    Yellow,
-    Blue,
-    Purple,
-    Cyan,
-    White,
-    // intense
-    IntenseBlack,
-    IntenseRed,
-    IntenseGreen,
-    IntenseYellow,
-    IntenseBlue,
-    IntensePurple,
-    IntenseCyan,
-    IntenseWhite,
-}
-
-impl std::fmt::Display for ColourAttribute {
-    // This trait requires `fmt` with this exact signature.
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let code = match self {
-            ColourAttribute::Bold => "1",
-            ColourAttribute::Dim => "2",
-            ColourAttribute::Italic => "3",
-            ColourAttribute::Underline => "4",
-        };
-        write!(f, "\x1b[{code}m")
-    }
-}
-
-impl std::fmt::Display for BGColour {
-    // This trait requires `fmt` with this exact signature.
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let code = match self {
-            // background
-            BGColour::Black => "40",
-            BGColour::Red => "41",
-            BGColour::Green => "42",
-            BGColour::Yellow => "43",
-            BGColour::Blue => "44",
-            BGColour::Purple => "45",
-            BGColour::Cyan => "46",
-            BGColour::White => "47",
-            // High Intensity backgrounds
-            BGColour::IntenseBlack => "100",
-            BGColour::IntenseRed => "101",
-            BGColour::IntenseGreen => "102",
-            BGColour::IntenseYellow => "103",
-            BGColour::IntenseBlue => "104",
-            BGColour::IntensePurple => "105",
-            BGColour::IntenseCyan => "106",
-            BGColour::IntenseWhite => "107",
-        };
-        write!(f, "\x1b[{code}m")
-    }
-}
-
-impl std::fmt::Display for Colour {
-    // This trait requires `fmt` with this exact signature.
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let code = match self {
-            // regular
-            Colour::Black => "30",
-            Colour::Red => "31",
-            Colour::Green => "32",
-            Colour::Yellow => "33",
-            Colour::Blue => "34",
-            Colour::Purple => "35",
-            Colour::Cyan => "36",
-            Colour::White => "37",
-            //High Intensity
-            Colour::IntenseBlack => "90",
-            Colour::IntenseRed => "91",
-            Colour::IntenseGreen => "92",
-            Colour::IntenseYellow => "93",
-            Colour::IntenseBlue => "94",
-            Colour::IntensePurple => "95",
-            Colour::IntenseCyan => "96",
-            Colour::IntenseWhite => "97",
-        };
-        write!(f, "\x1b[{code}m")
-    }
-}
-
-type AnsiEscape = String;
-
-impl From<Colour> for AnsiEscape {
-    fn from(value: Colour) -> Self {
-        format!("{value}")
-    }
-}
-
-impl From<&Colour> for AnsiEscape {
-    fn from(value: &Colour) -> Self {
-        format!("{value}")
-    }
-}
-
-impl From<BGColour> for AnsiEscape {
-    fn from(value: BGColour) -> Self {
-        format!("{value}")
-    }
-}
-
-impl From<&BGColour> for AnsiEscape {
-    fn from(value: &BGColour) -> Self {
-        format!("{value}")
-    }
-}
-
-impl From<ColourAttribute> for AnsiEscape {
-    fn from(value: ColourAttribute) -> Self {
-        format!("{value}")
-    }
-}
-
-impl From<&ColourAttribute> for AnsiEscape {
-    fn from(value: &ColourAttribute) -> Self {
-        format!("{value}")
-    }
-}
-
-pub fn colour<T: Into<AnsiEscape> + std::fmt::Display>(
-    c: T,
-    text: impl Into<String> + std::fmt::Display,
-) -> String {
-    format!("{c}{text}\x1b[0m")
+pub fn colour(text: impl Into<String> + std::fmt::Display, colours: &[&str]) -> String {
+    let colourcode = colours.join("");
+    format!("{colourcode}{text}{ANSI_RESET}")
 }
