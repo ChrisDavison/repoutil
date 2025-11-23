@@ -101,8 +101,8 @@ pub fn jjstat(dir: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
         let s = dir.to_string_lossy().to_string();
         Ok(Some(format!(
             "{} {}\n{}\n",
-            colour(format!(" {s} "), &[BGIntenseGreen, Black]),
-            colour("·".repeat(0), &[Bold, Red]),
+            colour(format!(" {s} "), &[BG_INTENSE_GREEN, BLACK]),
+            colour("·".repeat(0), &[BOLD, RED]),
             lines
                 .iter()
                 .map(|x| format!("  {x}"))
@@ -235,7 +235,7 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
 
     // Get the 'ahead/behind' status
     let mut parts = Vec::new();
-    let colours = if fmt.no_colour { vec![] } else { vec![Blue] };
+    let colours = if fmt.no_colour { vec![] } else { vec![BLUE] };
     if let Some(response) = branch_line.filter(|x| x.contains('[')) {
         // We're already filtering on contains, so safe to unwrap
         let start = response.find('[').unwrap();
@@ -270,7 +270,7 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         parts.push(if fmt.no_colour {
             s
         } else {
-            colour(s, &[Green])
+            colour(s, &[GREEN])
         })
     };
     if n_untracked > 0 {
@@ -278,7 +278,7 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         parts.push(if fmt.no_colour {
             s
         } else {
-            colour(s, &[Yellow])
+            colour(s, &[YELLOW])
         })
     };
 
@@ -287,7 +287,7 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         parts.push(if fmt.no_colour {
             s
         } else {
-            colour(s, &[Yellow])
+            colour(s, &[YELLOW])
         })
     }
 
@@ -306,7 +306,7 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
             if fmt.no_colour {
                 s
             } else {
-                colour(s, &[Bold, Red])
+                colour(s, &[BOLD, RED])
             },
             joined
         )
