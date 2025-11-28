@@ -3,9 +3,34 @@ use anyhow::{anyhow, Result};
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
 
-use crate::git;
+use crate::vcs;
 
+pub fn remove_common_ancestor(repo: &Path, common: Option<&PathBuf>) -> String {
+    if let Some(prefix) = common {
+        repo.strip_prefix(prefix).unwrap().display().to_string()
+    } else {
+        repo.display().to_string()
+    }
+}
 
+pub fn format_json(
+    title: &Path,
+    subtitle: Option<&str>,
+    path_as_arg: bool,
+    common: Option<&PathBuf>,
+) -> String {
+    let arg = if path_as_arg {
+        title.display().to_string()
+    } else {
+        String::new()
+    };
+    let title = remove_common_ancestor(title, common);
+    let mut fields = format!(r#""title": "{title}", "arg": "{arg}""#);
+    if let Some(sub) = subtitle {
+        fields += &format!(r#", "subtitle": "{sub}""#);
+    }
+    format!(r#"{{{fields}}}"#)
+}
 
 pub fn homedir(s: &str) -> Result<PathBuf> {
     let mut home = PathBuf::from(std::env::var("HOME")?);
@@ -74,7 +99,7 @@ pub fn get_repos_from_dir(dir: &Path) -> Result<Vec<PathBuf>> {
     let mut repos: Vec<PathBuf> = read_dir(dir)?
         .filter_map(|d| d.ok())
         .map(|d| d.path())
-        .filter(|d| git::is_git_repo(d))
+        .filter(|d| vcs::git::is_repo(d))
         .collect();
     repos.sort();
     Ok(repos)
@@ -84,13 +109,13 @@ pub fn get_repos_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
     let (inc, exc) = get_dirs_from_config()?;
     let excludes: Vec<_> = exc
         .iter()
-        .filter(|dir| git::is_git_repo(dir))
+        .filter(|dir| vcs::git::is_repo(dir))
         .cloned()
         .collect();
 
     let mut includes = Vec::with_capacity(inc.len());
     for dir in inc {
-        if git::is_git_repo(&dir) {
+        if vcs::git::is_repo(&dir) {
             includes.push(dir);
         } else if let Ok(repos) = get_repos_from_dir(&dir) {
             includes.extend(repos.iter().map(|p| p.to_path_buf()));

@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 use rayon::prelude::*;
 use std::path::PathBuf;
 
-mod git;
+mod vcs;
 mod util;
 mod ansi_escape;
 
@@ -98,19 +98,19 @@ fn main() {
     };
 
     let cmd = match args.command {
-        Command::Push => git::push,
-        Command::Fetch => git::fetch,
-        Command::Stat => git::stat,
-        Command::List => git::list,
-        Command::Unclean => git::needs_attention,
-        Command::Branchstat => git::branchstat,
-        Command::JjStat => git::jjstat,
-        Command::JjSync => git::jjsync,
-        Command::Branches => git::branches,
-        Command::Untracked => git::untracked,
-        Command::Dashboard => git::dashboard,
+        Command::Push => vcs::git::push,
+        Command::Fetch => vcs::git::fetch,
+        Command::Stat => vcs::git::stat,
+        Command::List => vcs::list,
+        Command::Unclean => vcs::git::needs_attention,
+        Command::Branchstat => vcs::git::branchstat,
+        Command::JjStat => vcs::jj::stat,
+        Command::JjSync => vcs::jj::sync,
+        Command::Branches => vcs::git::branches,
+        Command::Untracked => vcs::git::untracked,
+        Command::Dashboard => vcs::git::dashboard,
         Command::Add => {
-            if let Err(e) = git::add() {
+            if let Err(e) = vcs::add() {
                 println!("{}", e);
                 std::process::exit(1);
             }
