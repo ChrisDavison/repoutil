@@ -141,7 +141,7 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     let mut response = std::str::from_utf8(&stdout)?.lines();
     let stdout = Command::new("jj")
         .current_dir(p)
-        .args("list_mut".split(' '))
+        .args(["list_mut"])
         .output()?
         .stdout;
     let jj_mutable = std::str::from_utf8(&stdout)?
