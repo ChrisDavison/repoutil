@@ -257,11 +257,12 @@ pub fn dashboard(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         } else {
             colour(&commit_hash, &commit_colours)
         };
-        let mut output = format!("{} ({})", formatted_branch, formatted_commit);
+        let mut commit = format!("{} ({})", formatted_branch, formatted_commit);
+
+        let mut output = String::new();
 
         // Add file list if there are any files
         if !file_list.is_empty() {
-            output.push_str("\n");
             output.push_str(&file_list);
         }
 
@@ -280,7 +281,7 @@ pub fn dashboard(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         }
         let bar = colour("░", &[BLACK]);
         Ok(Some(format!(
-            "\n{}\n{}",
+            "\n{} on {formatted_branch} at {formatted_commit}\n{}",
             colour(&repo_name, &[PURPLE]),
             output
                 .lines()
