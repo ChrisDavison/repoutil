@@ -116,7 +116,7 @@ fn parse_git_status(p: &Path) -> Result<(String, Vec<(String, String)>)> {
         .output()?
         .stdout;
     let out_lines: Vec<&str> = std::str::from_utf8(&stdout)?.lines().collect();
-    
+
     // Extract branch info from first line
     let branch = if out_lines.is_empty() {
         "unknown".to_string()
@@ -135,14 +135,14 @@ fn parse_git_status(p: &Path) -> Result<(String, Vec<(String, String)>)> {
             "unknown".to_string()
         }
     };
-    
+
     // Skip branch line and process status lines
     let status_lines = if out_lines.len() > 1 {
         &out_lines[1..]
     } else {
         &[]
     };
-    
+
     let mut result = Vec::new();
     for line in status_lines {
         let trimmed = line.trim();
@@ -154,7 +154,7 @@ fn parse_git_status(p: &Path) -> Result<(String, Vec<(String, String)>)> {
             result.push((status, filepath));
         }
     }
-    
+
     Ok((branch, result))
 }
 
@@ -173,19 +173,32 @@ fn get_recent_commits(p: &Path) -> Result<String> {
     // Try to get commits from last week first
     let stdout = Command::new("git")
         .current_dir(p)
-        .args(["log", "--since=\"1 week ago\"", "--pretty=lo", "--color=always", "--date=short"])
+        .args([
+            "log",
+            "--since=\"1 week ago\"",
+            "--pretty=lo",
+            "--color=always",
+            "--date=short",
+        ])
         .output()?
         .stdout;
-    
+
     let commits = std::str::from_utf8(&stdout)?.trim();
-    
+
     if !commits.is_empty() {
         Ok(commits.to_string())
     } else {
         // Fallback to 10 most recent commits
         let stdout = Command::new("git")
             .current_dir(p)
-            .args(["log", "-n", "10", "--pretty=lo", "--color=always", "--date=short"])
+            .args([
+                "log",
+                "-n",
+                "10",
+                "--pretty=lo",
+                "--color=always",
+                "--date=short",
+            ])
             .output()?
             .stdout;
         Ok(std::str::from_utf8(&stdout)?.trim().to_string())
@@ -197,7 +210,7 @@ fn format_file_list(status_vec: &[(String, String)], fmt: &FormatOpts) -> String
     if status_vec.is_empty() {
         return String::new();
     }
-    
+
     let colours = if fmt.no_colour { vec![] } else { vec![GREEN] };
     status_vec
         .iter()
@@ -207,7 +220,7 @@ fn format_file_list(status_vec: &[(String, String)], fmt: &FormatOpts) -> String
             } else {
                 colour(status, &colours)
             };
-            format!("  {} {}", formatted_status, filepath)
+            format!("{} {}", formatted_status, filepath)
         })
         .collect::<Vec<_>>()
         .join("\n")
@@ -218,24 +231,19 @@ pub fn dashboard(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     if let Ok(Some(_)) = needs_attention(p, fmt) {
         // Parse git status into branch info and vector of (status, filepath) tuples
         let (branch, status_vec) = parse_git_status(p)?;
-        
+
         // Get short commit hash
         let commit_hash = get_short_commit_hash(p)?;
-        
+
         // Format file list from status vector
         let file_list = format_file_list(&status_vec, fmt);
-        
+
         // Get recent commits
         let commits = get_recent_commits(p)?;
-        
+
         // Build the output
         let repo_name = remove_common_ancestor(p, fmt.common_prefix);
-        let mut output = format!(
-            "\n\x1b[42m\x1b[1;30m {} {}\x1b[0m",
-            repo_name,
-            "·".repeat(0)
-        );
-        
+
         // Add branch and commit info
         let branch_colours = if fmt.no_colour { vec![] } else { vec![BLUE] };
         let commit_colours = if fmt.no_colour { vec![] } else { vec![YELLOW] };
@@ -249,29 +257,46 @@ pub fn dashboard(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         } else {
             colour(&commit_hash, &commit_colours)
         };
-        output.push_str(&format!("\n{} ({})", formatted_branch, formatted_commit));
-        
+        let mut output = format!("{} ({})", formatted_branch, formatted_commit);
+
         // Add file list if there are any files
         if !file_list.is_empty() {
             output.push_str("\n");
             output.push_str(&file_list);
         }
-        
+
         // Add commits if there are any
         if !commits.is_empty() {
             if !file_list.is_empty() {
                 output.push_str("\n\n");
             } else {
-                output.push('\n');
+                output.push_str("\n");
             }
             output.push_str("Recent commits:\n");
             let commit_lines: Vec<&str> = commits.lines().collect();
             for line in commit_lines {
-                output.push_str(&format!("  {}\n", line));
+                output.push_str(&format!("{}\n", line));
             }
         }
-        
-        Ok(Some(output))
+        let vv = colour("┃", &[BLACK]);
+        let hh = colour("━", &[BLACK]);
+        let vh = colour("┗", &[BLACK]);
+        let hv = colour("┏", &[BLACK]);
+        let uh = colour("┛", &[BLACK]);
+        let dh = colour("┓", &[BLACK]);
+        Ok(Some(format!(
+            "\n{}{dh}\n{} {vv}\n{hv}{}{uh}\n{}\n{}{}",
+            hh.repeat(repo_name.len()+1), 
+            colour(&repo_name, &[PURPLE]),
+            hh.repeat(repo_name.len()), 
+            output
+                .lines()
+                .map(|x| format!("{vv} {x}"))
+                .collect::<Vec<_>>()
+                .join("\n"),
+            vh,
+            hh.repeat(80),
+        )))
     } else {
         Ok(None)
     }
@@ -290,8 +315,7 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         .args(["list_mut"])
         .output()?
         .stdout;
-    let jj_mutable = std::str::from_utf8(&stdout)?
-        .lines().count();
+    let jj_mutable = std::str::from_utf8(&stdout)?.lines().count();
 
     let branch_line = response.next();
 
