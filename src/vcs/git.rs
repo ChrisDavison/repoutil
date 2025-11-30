@@ -278,24 +278,15 @@ pub fn dashboard(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
                 output.push_str(&format!("{}\n", line));
             }
         }
-        let vv = colour("┃", &[BLACK]);
-        let hh = colour("━", &[BLACK]);
-        let vh = colour("┗", &[BLACK]);
-        let hv = colour("┏", &[BLACK]);
-        let uh = colour("┛", &[BLACK]);
-        let dh = colour("┓", &[BLACK]);
+        let bar = colour("░", &[BLACK]);
         Ok(Some(format!(
-            "\n{}{dh}\n{} {vv}\n{hv}{}{uh}\n{}\n{}{}",
-            hh.repeat(repo_name.len()+1), 
+            "\n{}\n{}",
             colour(&repo_name, &[PURPLE]),
-            hh.repeat(repo_name.len()), 
             output
                 .lines()
-                .map(|x| format!("{vv} {x}"))
+                .map(|x| format!("{bar} {x}"))
                 .collect::<Vec<_>>()
                 .join("\n"),
-            vh,
-            hh.repeat(80),
         )))
     } else {
         Ok(None)
