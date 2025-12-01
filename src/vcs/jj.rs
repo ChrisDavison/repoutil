@@ -19,7 +19,9 @@ pub fn stat(dir: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
             .output()?
             .stdout,
     )?
-    .lines().count() == 1;
+    .lines()
+    .count()
+        == 1;
     let stdout = Command::new("jj")
         .current_dir(dir)
         .args(["status", "--color=always"])
@@ -42,4 +44,3 @@ pub fn stat(dir: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
         )))
     }
 }
-

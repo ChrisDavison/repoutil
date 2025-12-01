@@ -6,10 +6,10 @@ use std::path::Path;
 use std::process::Command;
 
 use crate::ansi_escape::*;
-use crate::util::{remove_common_ancestor, format_json};
+use crate::util::{format_json, remove_common_ancestor};
 
-pub mod jj;
 pub mod git;
+pub mod jj;
 
 pub fn add() -> Result<()> {
     let config_filename = crate::util::homedir(".repoutilrc")?;

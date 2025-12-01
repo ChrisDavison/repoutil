@@ -2,9 +2,9 @@ use clap::{Parser, Subcommand};
 use rayon::prelude::*;
 use std::path::PathBuf;
 
-mod vcs;
-mod util;
 mod ansi_escape;
+mod util;
+mod vcs;
 
 /// A fictional versioning CLI
 #[derive(Debug, Parser)] // requires `derive` feature
@@ -24,7 +24,7 @@ struct Cli {
 #[derive(Debug, Subcommand, PartialEq)]
 enum Command {
     /// Push commits
-    #[command(alias = "p")]
+    #[command(alias = "p", hide = true)]
     Push,
     /// Fetch commits and tags
     #[command(alias = "f")]
@@ -36,7 +36,7 @@ enum Command {
     #[command(aliases = &["ls", "l"])]
     List,
     /// List repos with local changes
-    #[command(aliases = &["u"])]
+    #[command(aliases = &["u"], hide=true)]
     Unclean,
     /// List short status of all branches
     #[command(aliases = &["bs"])]
@@ -48,11 +48,12 @@ enum Command {
     #[command(aliases = &["jjs"], hide=true)]
     JjSync,
     /// List all branches
-    #[command(aliases = &["b"])]
+    #[command(aliases = &["b"], hide=true)]
     Branches,
     /// List all untracked folders
-    #[command(aliases = &["un"])]
+    #[command(aliases = &["un"], hide=true)]
     Untracked,
+
     /// Add the current directory to ~/.repoutilrc
     #[command(aliases = &["a"])]
     Add,
