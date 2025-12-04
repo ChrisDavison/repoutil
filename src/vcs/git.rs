@@ -7,6 +7,15 @@ pub fn is_repo(p: &Path) -> bool {
 }
 
 /// Push all changes to the branch
+pub fn pull(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
+    Command::new("git")
+        .current_dir(p)
+        .args(["pull", "--rebase"])
+        .status()?;
+    branchstat(p, fmt)
+}
+
+/// Push all changes to the branch
 pub fn push(p: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
     Command::new("git")
         .current_dir(p)
@@ -307,12 +316,16 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         .output()?
         .stdout;
     let mut response = std::str::from_utf8(&stdout)?.lines();
-    let stdout = Command::new("jj")
-        .current_dir(p)
-        .args(["list_mut"])
-        .output()?
-        .stdout;
-    let jj_mutable = std::str::from_utf8(&stdout)?.lines().count();
+
+    #[cfg(feature = "jj")]
+    let jj_mutable = {
+        let stdout = Command::new("jj")
+            .current_dir(p)
+            .args(["list_mut"])
+            .output()?
+            .stdout;
+        std::str::from_utf8(&stdout)?.lines().count()
+    };
 
     let branch_line = response.next();
 
@@ -365,6 +378,7 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         })
     };
 
+    #[cfg(feature = "jj")]
     if jj_mutable != 0 {
         let s = format!("{}▲", jj_mutable);
         parts.push(if fmt.no_colour {

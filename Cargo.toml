@@ -1,6 +1,6 @@
 [package]
 name = "repoutil"
-version = "0.44.0"
+version = "0.45.0"
 authors = ["Chris Davison <c.jr.davison@gmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -13,3 +13,6 @@ description = "Wrapper around my common git commands"
 anyhow = "1.0"
 clap = { version = "4.5.27", features = ["derive"] }
 rayon = "1.10.0"
+
+[features]
+jj = []

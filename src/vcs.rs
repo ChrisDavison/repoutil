@@ -9,6 +9,8 @@ use crate::ansi_escape::*;
 use crate::util::{format_json, remove_common_ancestor};
 
 pub mod git;
+
+#[cfg(feature = "jj")]
 pub mod jj;
 
 pub fn add() -> Result<()> {

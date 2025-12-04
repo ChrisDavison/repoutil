@@ -23,30 +23,34 @@ struct Cli {
 
 #[derive(Debug, Subcommand, PartialEq)]
 enum Command {
-    /// Push commits
-    #[command(alias = "p", hide = true)]
-    Push,
+    /// Add the current directory to ~/.repoutilrc
+    #[command(aliases = &["a"])]
+    Add,
+    /// List tracked repos
+    #[command(aliases = &["ls", "l"])]
+    List,
     /// Fetch commits and tags
     #[command(alias = "f")]
     Fetch,
     /// Show short status
     #[command(aliases = &["s", "st"])]
     Stat,
-    /// List tracked repos
-    #[command(aliases = &["ls", "l"])]
-    List,
-    /// List repos with local changes
-    #[command(aliases = &["u"], hide=true)]
-    Unclean,
+    /// Display git dashboard
+    #[command(aliases = &["d", "dash"])]
+    Dashboard,
     /// List short status of all branches
     #[command(aliases = &["bs"])]
     Branchstat,
-    /// JJ status
-    #[command(aliases = &["jj"], hide=true)]
-    JjStat,
-    /// JJ sync all repos
-    #[command(aliases = &["jjs"], hide=true)]
-    JjSync,
+
+    /// Push commits
+    #[command(alias = "p", hide = true)]
+    Push,
+    /// Pull commits
+    #[command(alias = "pu", hide = true)]
+    Pull,
+    /// List repos with local changes
+    #[command(aliases = &["u"], hide=true)]
+    Unclean,
     /// List all branches
     #[command(aliases = &["b"], hide=true)]
     Branches,
@@ -54,13 +58,14 @@ enum Command {
     #[command(aliases = &["un"], hide=true)]
     Untracked,
 
-    /// Add the current directory to ~/.repoutilrc
-    #[command(aliases = &["a"])]
-    Add,
-
-    /// Display git dashboard
-    #[command(aliases = &["d"])]
-    Dashboard,
+    #[cfg(feature = "jj")]
+    /// JJ status
+    #[command(aliases = &["jj"], hide=true)]
+    JjStat,
+    #[cfg(feature = "jj")]
+    /// JJ sync all repos
+    #[command(aliases = &["jjs"], hide=true)]
+    JjSync,
 }
 
 #[derive(Clone)]
@@ -103,9 +108,12 @@ fn main() {
         Command::Fetch => vcs::git::fetch,
         Command::Stat => vcs::git::stat,
         Command::List => vcs::list,
+        Command::Pull => vcs::git::pull,
         Command::Unclean => vcs::git::needs_attention,
         Command::Branchstat => vcs::git::branchstat,
+        #[cfg(feature = "jj")]
         Command::JjStat => vcs::jj::stat,
+        #[cfg(feature = "jj")]
         Command::JjSync => vcs::jj::sync,
         Command::Branches => vcs::git::branches,
         Command::Untracked => vcs::git::untracked,
