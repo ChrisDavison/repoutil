@@ -101,6 +101,33 @@ pub fn stat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     Ok(Some(s))
 }
 
+
+/// Get a count of stashes
+pub fn stashcount(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
+    let stdout = Command::new("git")
+        .current_dir(p)
+        .args(["stash", "list"])
+        .output()?
+        .stdout;
+    let stashes: usize = std::str::from_utf8(&stdout)?.lines().count();
+    if stashes == 0 {
+        Ok(None)
+    } else {
+    let s = if fmt.use_json {
+        format_json(p, Some(&stashes.to_string()), false, fmt.common_prefix)
+    } else {
+        let simple_path = remove_common_ancestor(p, fmt.common_prefix);
+        format!(
+            "{:30}\t{}",
+            if fmt.no_colour { simple_path } else { colour(simple_path, &[RED]) },
+            if fmt.no_colour { stashes.to_string() } else { colour(stashes.to_string(), &[GREEN]) },
+        )
+    };
+    Ok(Some(s))
+    }
+}
+
+
 /// Get a list of branches for the given git path
 pub fn branches(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     let stdout = Command::new("git")

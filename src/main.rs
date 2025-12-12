@@ -57,6 +57,9 @@ enum Command {
     /// List all untracked folders
     #[command(aliases = &["un"], hide=true)]
     Untracked,
+    /// Count stashes
+    #[command(aliases = &["sc"], hide=true)]
+    Stashcount,
 
     #[cfg(feature = "jj")]
     /// JJ status
@@ -111,6 +114,7 @@ fn main() {
         Command::Pull => vcs::git::pull,
         Command::Unclean => vcs::git::needs_attention,
         Command::Branchstat => vcs::git::branchstat,
+        Command::Stashcount => vcs::git::stashcount,
         #[cfg(feature = "jj")]
         Command::JjStat => vcs::jj::stat,
         #[cfg(feature = "jj")]
