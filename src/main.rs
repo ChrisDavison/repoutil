@@ -63,11 +63,11 @@ enum Command {
 
     #[cfg(feature = "jj")]
     /// JJ status
-    #[command(aliases = &["jj"], hide=true)]
+    #[command(aliases = &["jj"])]
     JjStat,
     #[cfg(feature = "jj")]
     /// JJ sync all repos
-    #[command(aliases = &["jjs"], hide=true)]
+    #[command(aliases = &["jjs"])]
     JjSync,
 }
 
