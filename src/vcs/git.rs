@@ -101,7 +101,6 @@ pub fn stat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     Ok(Some(s))
 }
 
-
 /// Get a count of stashes
 pub fn stashcount(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     let stdout = Command::new("git")
@@ -113,20 +112,27 @@ pub fn stashcount(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     if stashes == 0 {
         Ok(None)
     } else {
-    let s = if fmt.use_json {
-        format_json(p, Some(&stashes.to_string()), false, fmt.common_prefix)
-    } else {
-        let simple_path = remove_common_ancestor(p, fmt.common_prefix);
-        format!(
-            "{:30}\t{}",
-            if fmt.no_colour { simple_path } else { colour(simple_path, &[RED]) },
-            if fmt.no_colour { stashes.to_string() } else { colour(stashes.to_string(), &[GREEN]) },
-        )
-    };
-    Ok(Some(s))
+        let s = if fmt.use_json {
+            format_json(p, Some(&stashes.to_string()), false, fmt.common_prefix)
+        } else {
+            let simple_path = remove_common_ancestor(p, fmt.common_prefix);
+            format!(
+                "{:30}\t{}",
+                if fmt.no_colour {
+                    simple_path
+                } else {
+                    colour(simple_path, &[RED])
+                },
+                if fmt.no_colour {
+                    stashes.to_string()
+                } else {
+                    colour(stashes.to_string(), &[GREEN])
+                },
+            )
+        };
+        Ok(Some(s))
     }
 }
-
 
 /// Get a list of branches for the given git path
 pub fn branches(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
@@ -344,16 +350,6 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         .stdout;
     let mut response = std::str::from_utf8(&stdout)?.lines();
 
-    #[cfg(feature = "jj")]
-    let jj_mutable = {
-        let stdout = Command::new("jj")
-            .current_dir(p)
-            .args(["list_mut"])
-            .output()?
-            .stdout;
-        std::str::from_utf8(&stdout)?.lines().count()
-    };
-
     let branch_line = response.next();
 
     // Get the 'ahead/behind' status
@@ -406,13 +402,23 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     };
 
     #[cfg(feature = "jj")]
-    if jj_mutable != 0 {
-        let s = format!("{}▲", jj_mutable);
-        parts.push(if fmt.no_colour {
-            s
-        } else {
-            colour(s, &[YELLOW])
-        })
+    {
+        let jj_mutable = {
+            let stdout = Command::new("jj")
+                .current_dir(p)
+                .args(["list_mut"])
+                .output()?
+                .stdout;
+            std::str::from_utf8(&stdout)?.lines().count()
+        };
+        if jj_mutable != 0 {
+            let s = format!("{}▲", jj_mutable);
+            parts.push(if fmt.no_colour {
+                s
+            } else {
+                colour(s, &[YELLOW])
+            })
+        }
     }
 
     let joined = parts.join(", ");
