@@ -15,4 +15,6 @@ clap = { version = "4.5.27", features = ["derive"] }
 rayon = "1.10.0"
 
 [features]
+default = ["jj", "git"]
 jj = []
+git = []
