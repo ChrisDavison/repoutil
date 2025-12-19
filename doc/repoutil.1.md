@@ -9,35 +9,59 @@ repoutil - utility for multiple git repos
 
 # SYNOPSIS
 
-    repoutil stat
-    repoutil fetch
-    repoutil list
-    repoutil unclean
-    repoutil branchstat
-    repoutil branches
+    repoutil list [--json]
+    repoutil add
+    repoutil git stat|fetch|pull|push|branchstat|branches|stashcount|unclean|dashboard [--json]
+    repoutil jj stat|sync [--json]
 
 # DESCRIPTION
 
 This script relies on a file, *~/.repoutilrc*, which contains either individual
 directory paths or a root folder containing multiple sub directories.
 
-**stat**
-: run *git status* for every repo
-
-**fetch**
-: get remote changes for every branch
-
 **list**
 : list repos that would be operated on
 
-**unclean**
+**add**
+: append the current directory to *~/.repoutilrc*
+
+**git stat**
+: run *git status -s -b* for every repo, and show only repos with changes
+
+**git fetch**
+: fetch remote changes for all branches
+
+**git pull|push**
+: pull or push changes for all branches and tags
+
+**git branchstat**
+: list ahead/behind and modified/untracked counts for each repo
+
+**git branches**
+: list local branch names for each repo
+
+**git stashcount**
+: show the number of stashes for each repo
+
+**git unclean**
 : list repos that have local changes
 
-**branchstat**
-: list short status of every branch for each repo
+**git dashboard**
+: show repo status plus recent commits
 
-**branches**
-: list branch names for each repo
+**jj stat|sync**
+: jujutsu equivalents when built with the `jj` feature
+
+# OPTIONS
+
+**--json**
+: emit machine-readable JSON of the form `{ "items": [{ title, arg, subtitle? }] }`
+
+**--color**=auto|always|never
+: control colored output; in `auto`, `NO_COLOR` disables colors
+
+**--threads**=N
+: cap Rayon parallelism to N threads
 
 
 # AUTHORS
