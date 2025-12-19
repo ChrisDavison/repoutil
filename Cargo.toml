@@ -2,7 +2,7 @@
 name = "repoutil"
 version = "0.47.0"
 authors = ["Chris Davison <c.jr.davison@gmail.com>"]
-edition = "2018"
+edition = "2021"
 license = "MIT"
 repository = "https://github.com/chrisdavison/repoutil"
 description = "Wrapper around my common git commands"
@@ -13,6 +13,8 @@ description = "Wrapper around my common git commands"
 anyhow = "1.0"
 clap = { version = "4.5.27", features = ["derive"] }
 rayon = "1.10.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 
 [features]
 default = ["jj", "git"]
