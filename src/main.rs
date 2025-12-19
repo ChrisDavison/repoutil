@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use rayon::prelude::*;
 use std::path::PathBuf;
 
@@ -6,17 +6,23 @@ mod ansi_escape;
 mod util;
 mod vcs;
 
-/// A fictional versioning CLI
+/// Run common operations across many repositories
 #[derive(Debug, Parser)] // requires `derive` feature
-#[command(name = "git")]
-#[command(about = "A fictional versioning CLI", long_about = None)]
+#[command(name = "repoutil")]
+#[command(about = "Run common operations across many repositories", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
     #[arg(short, long)]
     use_json: bool,
-    #[arg(short, long)]
+    #[arg(short, long, hide = true)]
     no_colour: bool,
+    /// Colorize output: auto (default), always, or never
+    #[arg(long, value_enum, default_value_t = ColorChoice::Auto)]
+    color: ColorChoice,
+    /// Limit thread pool size for parallel repo ops
+    #[arg(long)]
+    threads: Option<usize>,
     #[arg(short, long)]
     keep_home: bool,
 }
@@ -39,6 +45,13 @@ enum Command {
     #[command(subcommand)]
     /// Operations on git repositories
     Jj(JjCommand),
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
+enum ColorChoice {
+    Auto,
+    Always,
+    Never,
 }
 
 #[cfg(feature = "git")]
@@ -95,6 +108,10 @@ struct FormatOpts<'a> {
 fn main() {
     let args = Cli::parse();
 
+    if let Some(n) = args.threads {
+        let _ = rayon::ThreadPoolBuilder::new().num_threads(n).build_global();
+    }
+
     let (includes, excludes) = match util::get_repos_from_config() {
         Ok((i, e)) => (i, e),
         Err(err) => {
@@ -114,10 +131,17 @@ fn main() {
         util::common_ancestor(&repos)
     };
 
+    let env_no_color = std::env::var_os("NO_COLOR").is_some();
+    let computed_no_colour = match args.color {
+        ColorChoice::Always => false,
+        ColorChoice::Never => true,
+        ColorChoice::Auto => env_no_color,
+    } || args.no_colour;
+
     let fmt = FormatOpts {
         use_json: args.use_json,
         common_prefix: if args.keep_home { None } else { Some(&common) },
-        no_colour: args.no_colour,
+        no_colour: computed_no_colour,
     };
 
     let cmd = match args.command {

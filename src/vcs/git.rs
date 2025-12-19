@@ -8,28 +8,31 @@ pub fn is_repo(p: &Path) -> bool {
 
 /// Push all changes to the branch
 pub fn pull(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
-    Command::new("git")
+    let status = Command::new("git")
         .current_dir(p)
-        .args(["pull", "--rebase"])
+        .args(["pull", "--rebase"]) 
         .status()?;
+    if !status.success() { return Err(anyhow!("git pull failed for {}", p.display())); }
     branchstat(p, fmt)
 }
 
 /// Push all changes to the branch
 pub fn push(p: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
-    Command::new("git")
+    let status = Command::new("git")
         .current_dir(p)
         .args(["push", "--all", "--tags"])
         .status()?;
+    if !status.success() { return Err(anyhow!("git push failed for {}", p.display())); }
     Ok(None)
 }
 
 /// Fetch all branches of a git repo
 pub fn fetch(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
-    Command::new("git")
+    let status = Command::new("git")
         .current_dir(p)
         .args(["fetch", "--all", "--tags"])
         .status()?;
+    if !status.success() { return Err(anyhow!("git fetch failed for {}", p.display())); }
     branchstat(p, fmt)
 }
 
@@ -228,7 +231,8 @@ fn get_recent_commits(p: &Path) -> Result<String> {
         .current_dir(p)
         .args([
             "log",
-            "--since=\"1 week ago\"",
+            "--since",
+            "1 week ago",
             "--pretty=lo",
             "--color=always",
             "--date=short",

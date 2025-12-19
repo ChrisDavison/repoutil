@@ -4,6 +4,7 @@ use std::fs::read_dir;
 use std::path::{Path, PathBuf};
 
 use crate::vcs;
+use serde_json::json;
 
 pub fn remove_common_ancestor(repo: &Path, common: Option<&PathBuf>) -> String {
     if let Some(prefix) = common {
@@ -25,18 +26,26 @@ pub fn format_json(
         String::new()
     };
     let title = remove_common_ancestor(title, common);
-    let mut fields = format!(r#""title": "{title}", "arg": "{arg}""#);
-    if let Some(sub) = subtitle {
-        fields += &format!(r#", "subtitle": "{sub}""#);
-    }
-    format!(r#"{{{fields}}}"#)
+    let obj = if let Some(sub) = subtitle {
+        json!({
+            "title": title,
+            "arg": arg,
+            "subtitle": sub,
+        })
+    } else {
+        json!({
+            "title": title,
+            "arg": arg,
+        })
+    };
+    obj.to_string()
 }
 
 pub fn homedir(s: &str) -> Result<PathBuf> {
     let mut home = PathBuf::from(std::env::var("HOME")?);
-    if s.contains("~") {
-        let p = PathBuf::from(s);
-        for cmp in p.components().skip(1) {
+    if let Some(rest) = s.strip_prefix("~") {
+        let p = PathBuf::from(rest);
+        for cmp in p.components() {
             home.push(cmp);
         }
         Ok(home)
@@ -47,26 +56,33 @@ pub fn homedir(s: &str) -> Result<PathBuf> {
 }
 
 pub fn common_ancestor(ss: &[PathBuf]) -> PathBuf {
-    if ss.len() == 1 {
+    if ss.is_empty() || ss.len() == 1 {
         return PathBuf::new();
     }
-    let mut idx = 0;
-    let components = ss
-        .iter()
-        .map(|x| x.components().collect::<Vec<_>>())
-        .collect::<Vec<_>>();
-    let entry0 = &components[0];
-    loop {
-        let first = entry0.get(idx);
-        if !components.iter().all(|w| w.get(idx) == first) {
-            let first = entry0.get(idx);
-            if !components.iter().all(|w| w.get(idx) == first) {
-                break;
+    let mut iterators: Vec<_> = ss.iter().map(|p| p.components()).collect();
+    let mut prefix: Vec<std::path::Component> = Vec::new();
+    'outer: loop {
+        let mut next: Option<std::path::Component> = None;
+        for it in iterators.iter_mut() {
+            if let Some(c) = it.next() {
+                if let Some(prev) = next {
+                    if prev != c {
+                        break 'outer;
+                    }
+                } else {
+                    next = Some(c);
+                }
+            } else {
+                break 'outer;
             }
         }
-        idx += 1;
+        if let Some(c) = next {
+            prefix.push(c);
+        } else {
+            break;
+        }
     }
-    entry0.iter().take(idx).collect()
+    prefix.iter().collect()
 }
 
 pub fn get_dirs_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
@@ -80,6 +96,10 @@ pub fn get_dirs_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
     let mut includes = Vec::new();
     let mut excludes = Vec::new();
     for line in std::fs::read_to_string(p)?.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
         if let Some(stripped) = line.strip_prefix('!') {
             let path = homedir(stripped)?;
             // Strip 'exclusion-marking' ! from start of path, and add to excludes list

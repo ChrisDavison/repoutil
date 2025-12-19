@@ -18,13 +18,11 @@ pub fn add() -> Result<()> {
     let curdir = std::env::current_dir()?;
     if git::is_repo(&curdir) {
         let mut file = std::fs::OpenOptions::new()
+            .create(true)
             .append(true)
-            .open(config_filename)
-            .unwrap();
+            .open(config_filename)?;
 
-        if let Err(e) = writeln!(file, "{}", curdir.to_string_lossy()) {
-            eprintln!("Couldn't write to file: {}", e);
-        }
+        writeln!(file, "{}", curdir.to_string_lossy())?;
         Ok(())
     } else {
         Err(anyhow!("Don't appear to be in the root of a git repo."))
