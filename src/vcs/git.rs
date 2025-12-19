@@ -10,7 +10,7 @@ pub fn is_repo(p: &Path) -> bool {
 pub fn pull(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     let status = Command::new("git")
         .current_dir(p)
-        .args(["pull", "--rebase"]) 
+        .args(["pull", "--rebase"])
         .status()?;
     if !status.success() { return Err(anyhow!("git pull failed for {}", p.display())); }
     branchstat(p, fmt)
@@ -164,50 +164,41 @@ pub fn branches(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     Ok(Some(s))
 }
 
-/// Parse git status -s -b output into branch info and vector of (status, filepath) tuples
+/// Parse git status with robust null-separated porcelain format
 fn parse_git_status(p: &Path) -> Result<(String, Vec<(String, String)>)> {
-    let stdout = Command::new("git")
+    // First, get the branch name
+    let branch_stdout = Command::new("git")
         .current_dir(p)
-        .args(["status", "-s", "-b"])
+        .args(["symbolic-ref", "--short", "HEAD"])
         .output()?
         .stdout;
-    let out_lines: Vec<&str> = std::str::from_utf8(&stdout)?.lines().collect();
-
-    // Extract branch info from first line
-    let branch = if out_lines.is_empty() {
-        "unknown".to_string()
+    
+    let branch = if branch_stdout.is_empty() {
+        "HEAD".to_string()
     } else {
-        let first_line = out_lines[0];
-        if let Some(branch_part) = first_line.strip_prefix("## ") {
-            // Remove any tracking info after "..."
-            let branch_end = branch_part.find("...").unwrap_or(branch_part.len());
-            let branch_name = &branch_part[..branch_end];
-            if branch_name == "HEAD (no branch)" {
-                "HEAD".to_string()
-            } else {
-                branch_name.to_string()
-            }
-        } else {
-            "unknown".to_string()
-        }
+        std::str::from_utf8(&branch_stdout)?.trim().to_string()
     };
 
-    // Skip branch line and process status lines
-    let status_lines = if out_lines.len() > 1 {
-        &out_lines[1..]
-    } else {
-        &[]
-    };
+    // Use porcelain -z for safe null-separated output
+    let stdout = Command::new("git")
+        .current_dir(p)
+        .args(["status", "--porcelain=v1", "-z"])
+        .output()?
+        .stdout;
 
+    // Split on null byte and parse
     let mut result = Vec::new();
-    for line in status_lines {
-        let trimmed = line.trim();
-        if !trimmed.is_empty() {
-            // Find where status codes end and filepath begins
-            let status_end = trimmed.find(' ').unwrap_or(trimmed.len());
-            let status = trimmed[..status_end].to_string();
-            let filepath = trimmed[status_end..].trim().to_string();
-            result.push((status, filepath));
+    for entry in stdout.split(|&b| b == 0) {
+        if entry.is_empty() {
+            continue;
+        }
+        if let Ok(s) = std::str::from_utf8(entry) {
+            // Porcelain format: "XY PATH"
+            if s.len() > 3 {
+                let status = s[..2].to_string();
+                let filepath = s[3..].to_string();
+                result.push((status, filepath));
+            }
         }
     }
 
@@ -231,8 +222,7 @@ fn get_recent_commits(p: &Path) -> Result<String> {
         .current_dir(p)
         .args([
             "log",
-            "--since",
-            "1 week ago",
+            "--since=1.week.ago",
             "--pretty=lo",
             "--color=always",
             "--date=short",

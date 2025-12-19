@@ -20,17 +20,23 @@ Commands include:
 
 For each configured repo, return the `git status -s -b` output. Only show output for repos with interesting changes.
 
+Uses robust null-separated parsing (`git status --porcelain=v1 -z`) to safely handle filenames with spaces and special characters.
+
 ## `fetch`
 
 Visit each configured repo, fetching remote changes for all branches.
 
-Options:
+## Options
 
-- `--json`: Emit machine-readable JSON: `{ "items": [{ title, arg, subtitle? }] }`
-- `--color <auto|always|never>`: Control color output (respects `NO_COLOR` in `auto`)
+- `--json`: Emit machine-readable JSON
+- `--color <auto|always|never>`: Control colored output (respects `NO_COLOR`)
 - `--threads <N>`: Cap parallelism for large repo sets
 - `--keep-home`: Do not strip the common home prefix from displayed paths
 
-Configuration:
+## Configuration
 
 Populate `~/.repoutilrc` with lines containing either repo paths or directories to scan for repos. Lines starting with `!` are exclusions; blank lines and `#` comments are ignored. `~` is expanded at the start of the path.
+
+## Shell Completions
+
+Bash, Zsh, and Fish completions are auto-generated during build. Install them from `completions/`.

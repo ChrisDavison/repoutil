@@ -44,6 +44,11 @@ pub const BG_INTENSE_WHITE: &str = "\x1b[107m";
 
 pub const ANSI_RESET: &str = "\x1b[0m";
 
+/// Check if colors should be enabled based on TTY and NO_COLOR
+pub fn should_color_stdout() -> bool {
+    anstream::stdout().is_terminal() && std::env::var_os("NO_COLOR").is_none()
+}
+
 pub fn colour(text: impl Into<String> + std::fmt::Display, colours: &[&str]) -> String {
     let colourcode = colours.join("");
     format!("{colourcode}{text}{ANSI_RESET}")

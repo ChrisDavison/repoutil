@@ -43,7 +43,7 @@ pub fn format_json(
 
 pub fn homedir(s: &str) -> Result<PathBuf> {
     let mut home = PathBuf::from(std::env::var("HOME")?);
-    if let Some(rest) = s.strip_prefix("~") {
+    if let Some(rest) = s.strip_prefix("~/") {
         let p = PathBuf::from(rest);
         for cmp in p.components() {
             home.push(cmp);
