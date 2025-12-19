@@ -109,7 +109,9 @@ fn main() {
     let args = Cli::parse();
 
     if let Some(n) = args.threads {
-        let _ = rayon::ThreadPoolBuilder::new().num_threads(n).build_global();
+        let _ = rayon::ThreadPoolBuilder::new()
+            .num_threads(n)
+            .build_global();
     }
 
     let (includes, excludes) = match util::get_repos_from_config() {
@@ -173,7 +175,7 @@ fn main() {
         Command::Jj(jjc) => match jjc {
             JjCommand::Stat => vcs::jj::stat,
             JjCommand::Sync => vcs::jj::sync,
-        }
+        },
     };
 
     let outs: Vec<_> = repos

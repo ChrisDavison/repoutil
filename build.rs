@@ -15,7 +15,12 @@ fn build_cli() -> Command {
 
     Command::new("repoutil")
         .about("Run common operations across many repositories")
-        .arg(Arg::new("json").short('j').long("json").help("Output as JSON"))
+        .arg(
+            Arg::new("json")
+                .short('j')
+                .long("json")
+                .help("Output as JSON"),
+        )
         .arg(
             Arg::new("color")
                 .long("color")
@@ -30,10 +35,7 @@ fn build_cli() -> Command {
                 .help("Limit thread pool size"),
         )
         .arg(Arg::new("keep_home").short('k').long("keep-home"))
-        .subcommand(
-            Command::new("list")
-                .about("List directories tracked in ~/.repoutilrc"),
-        )
+        .subcommand(Command::new("list").about("List directories tracked in ~/.repoutilrc"))
         .subcommand(Command::new("add").about("Add current directory to ~/.repoutilrc"))
         .subcommand(
             Command::new("git")
@@ -60,9 +62,7 @@ fn build_cli() -> Command {
 fn main() {
     let outdir = match env::var_os("CARGO_CFG_TARGET_OS") {
         None => return,
-        Some(_) => {
-            PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("completions")
-        }
+        Some(_) => PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("completions"),
     };
 
     std::fs::create_dir_all(&outdir).unwrap();

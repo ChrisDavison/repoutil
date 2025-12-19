@@ -12,7 +12,9 @@ pub fn pull(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         .current_dir(p)
         .args(["pull", "--rebase"])
         .status()?;
-    if !status.success() { return Err(anyhow!("git pull failed for {}", p.display())); }
+    if !status.success() {
+        return Err(anyhow!("git pull failed for {}", p.display()));
+    }
     branchstat(p, fmt)
 }
 
@@ -22,7 +24,9 @@ pub fn push(p: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
         .current_dir(p)
         .args(["push", "--all", "--tags"])
         .status()?;
-    if !status.success() { return Err(anyhow!("git push failed for {}", p.display())); }
+    if !status.success() {
+        return Err(anyhow!("git push failed for {}", p.display()));
+    }
     Ok(None)
 }
 
@@ -32,7 +36,9 @@ pub fn fetch(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         .current_dir(p)
         .args(["fetch", "--all", "--tags"])
         .status()?;
-    if !status.success() { return Err(anyhow!("git fetch failed for {}", p.display())); }
+    if !status.success() {
+        return Err(anyhow!("git fetch failed for {}", p.display()));
+    }
     branchstat(p, fmt)
 }
 
@@ -172,7 +178,7 @@ fn parse_git_status(p: &Path) -> Result<(String, Vec<(String, String)>)> {
         .args(["symbolic-ref", "--short", "HEAD"])
         .output()?
         .stdout;
-    
+
     let branch = if branch_stdout.is_empty() {
         "HEAD".to_string()
     } else {
