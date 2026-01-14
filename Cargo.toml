@@ -25,6 +25,6 @@ clap = { version = "4.5.27", features = ["derive"] }
 clap_complete = "4.5.27"
 
 [features]
-default = ["jj", "git"]
+default = ["git"]
 jj = []
 git = []
