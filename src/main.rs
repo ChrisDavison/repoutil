@@ -36,27 +36,6 @@ enum Command {
     #[command(aliases = &["ls", "l"])]
     List,
 
-    #[cfg(feature = "git")]
-    #[command(subcommand)]
-    /// Operations on git repositories
-    Git(GitCommand),
-
-    #[cfg(feature = "jj")]
-    #[command(subcommand)]
-    /// Operations on git repositories
-    Jj(JjCommand),
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
-enum ColorChoice {
-    Auto,
-    Always,
-    Never,
-}
-
-#[cfg(feature = "git")]
-#[derive(Debug, Subcommand, PartialEq)]
-enum GitCommand {
     /// Fetch commits and tags
     #[command(alias = "f")]
     Fetch,
@@ -87,15 +66,22 @@ enum GitCommand {
     /// Count stashes
     #[command(aliases = &["sc"], hide=true)]
     Stashcount,
+
+    #[cfg(feature = "jj")]
+    /// Get status of all repositories
+    #[command(aliases = &["jj"], hide=true)]
+    JJStat,
+    #[cfg(feature = "jj")]
+    #[command(aliases = &["jjs"], hide=true)]
+    /// Pull all repositories
+    JJSync,
 }
 
-#[cfg(feature = "jj")]
-#[derive(Debug, Subcommand, PartialEq)]
-enum JjCommand {
-    /// Get status of all repositories
-    Stat,
-    /// Pull all repositories
-    Sync,
+#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
+enum ColorChoice {
+    Auto,
+    Always,
+    Never,
 }
 
 #[derive(Clone)]
@@ -122,7 +108,7 @@ fn main() {
         }
     };
 
-    let repos = if args.command == Command::Git(GitCommand::Untracked) {
+    let repos = if args.command == Command::Untracked {
         excludes
     } else {
         includes
@@ -156,26 +142,20 @@ fn main() {
             return;
         }
         Command::List => vcs::list,
-        // Git commands
-        #[cfg(feature = "git")]
-        Command::Git(gc) => match gc {
-            GitCommand::Push => vcs::git::push,
-            GitCommand::Fetch => vcs::git::fetch,
-            GitCommand::Stat => vcs::git::stat,
-            GitCommand::Pull => vcs::git::pull,
-            GitCommand::Unclean => vcs::git::needs_attention,
-            GitCommand::Branchstat => vcs::git::branchstat,
-            GitCommand::Stashcount => vcs::git::stashcount,
-            GitCommand::Branches => vcs::git::branches,
-            GitCommand::Untracked => vcs::git::untracked,
-            GitCommand::Dashboard => vcs::git::dashboard,
-        },
-        // JJ commands
+        Command::Push => vcs::git::push,
+        Command::Fetch => vcs::git::fetch,
+        Command::Stat => vcs::git::stat,
+        Command::Pull => vcs::git::pull,
+        Command::Unclean => vcs::git::needs_attention,
+        Command::Branchstat => vcs::git::branchstat,
+        Command::Stashcount => vcs::git::stashcount,
+        Command::Branches => vcs::git::branches,
+        Command::Untracked => vcs::git::untracked,
+        Command::Dashboard => vcs::git::dashboard,
         #[cfg(feature = "jj")]
-        Command::Jj(jjc) => match jjc {
-            JjCommand::Stat => vcs::jj::stat,
-            JjCommand::Sync => vcs::jj::sync,
-        },
+        Command::JJStat => vcs::jj::stat,
+        #[cfg(feature = "jj")]
+        Command::JJSync => vcs::jj::sync,
     };
 
     let outs: Vec<_> = repos

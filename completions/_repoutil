@@ -48,7 +48,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '-h[Print help]' \
 '--help[Print help]' \
-":: :_repoutil__git_commands" \
+":: :_repoutil__subcmd__git_commands" \
 "*::: :->git" \
 && ret=0
 
@@ -120,7 +120,7 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (help)
 _arguments "${_arguments_options[@]}" : \
-":: :_repoutil__git__help_commands" \
+":: :_repoutil__subcmd__git__subcmd__help_commands" \
 "*::: :->help" \
 && ret=0
 
@@ -186,7 +186,7 @@ esac
 _arguments "${_arguments_options[@]}" : \
 '-h[Print help]' \
 '--help[Print help]' \
-":: :_repoutil__jj_commands" \
+":: :_repoutil__subcmd__jj_commands" \
 "*::: :->jj" \
 && ret=0
 
@@ -210,7 +210,7 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (help)
 _arguments "${_arguments_options[@]}" : \
-":: :_repoutil__jj__help_commands" \
+":: :_repoutil__subcmd__jj__subcmd__help_commands" \
 "*::: :->help" \
 && ret=0
 
@@ -242,7 +242,7 @@ esac
 ;;
 (help)
 _arguments "${_arguments_options[@]}" : \
-":: :_repoutil__help_commands" \
+":: :_repoutil__subcmd__help_commands" \
 "*::: :->help" \
 && ret=0
 
@@ -262,7 +262,7 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (git)
 _arguments "${_arguments_options[@]}" : \
-":: :_repoutil__help__git_commands" \
+":: :_repoutil__subcmd__help__subcmd__git_commands" \
 "*::: :->git" \
 && ret=0
 
@@ -318,7 +318,7 @@ esac
 ;;
 (jj)
 _arguments "${_arguments_options[@]}" : \
-":: :_repoutil__help__jj_commands" \
+":: :_repoutil__subcmd__help__subcmd__jj_commands" \
 "*::: :->jj" \
 && ret=0
 
@@ -364,13 +364,13 @@ _repoutil_commands() {
     )
     _describe -t commands 'repoutil commands' commands "$@"
 }
-(( $+functions[_repoutil__add_commands] )) ||
-_repoutil__add_commands() {
+(( $+functions[_repoutil__subcmd__add_commands] )) ||
+_repoutil__subcmd__add_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil add commands' commands "$@"
 }
-(( $+functions[_repoutil__git_commands] )) ||
-_repoutil__git_commands() {
+(( $+functions[_repoutil__subcmd__git_commands] )) ||
+_repoutil__subcmd__git_commands() {
     local commands; commands=(
 'stat:Show short status' \
 'fetch:Fetch commits and tags' \
@@ -386,28 +386,28 @@ _repoutil__git_commands() {
     )
     _describe -t commands 'repoutil git commands' commands "$@"
 }
-(( $+functions[_repoutil__git__branches_commands] )) ||
-_repoutil__git__branches_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__branches_commands] )) ||
+_repoutil__subcmd__git__subcmd__branches_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git branches commands' commands "$@"
 }
-(( $+functions[_repoutil__git__branchstat_commands] )) ||
-_repoutil__git__branchstat_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__branchstat_commands] )) ||
+_repoutil__subcmd__git__subcmd__branchstat_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git branchstat commands' commands "$@"
 }
-(( $+functions[_repoutil__git__dashboard_commands] )) ||
-_repoutil__git__dashboard_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__dashboard_commands] )) ||
+_repoutil__subcmd__git__subcmd__dashboard_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git dashboard commands' commands "$@"
 }
-(( $+functions[_repoutil__git__fetch_commands] )) ||
-_repoutil__git__fetch_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__fetch_commands] )) ||
+_repoutil__subcmd__git__subcmd__fetch_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git fetch commands' commands "$@"
 }
-(( $+functions[_repoutil__git__help_commands] )) ||
-_repoutil__git__help_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__help_commands] )) ||
+_repoutil__subcmd__git__subcmd__help_commands() {
     local commands; commands=(
 'stat:Show short status' \
 'fetch:Fetch commits and tags' \
@@ -423,93 +423,93 @@ _repoutil__git__help_commands() {
     )
     _describe -t commands 'repoutil git help commands' commands "$@"
 }
-(( $+functions[_repoutil__git__help__branches_commands] )) ||
-_repoutil__git__help__branches_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__help__subcmd__branches_commands] )) ||
+_repoutil__subcmd__git__subcmd__help__subcmd__branches_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git help branches commands' commands "$@"
 }
-(( $+functions[_repoutil__git__help__branchstat_commands] )) ||
-_repoutil__git__help__branchstat_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__help__subcmd__branchstat_commands] )) ||
+_repoutil__subcmd__git__subcmd__help__subcmd__branchstat_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git help branchstat commands' commands "$@"
 }
-(( $+functions[_repoutil__git__help__dashboard_commands] )) ||
-_repoutil__git__help__dashboard_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__help__subcmd__dashboard_commands] )) ||
+_repoutil__subcmd__git__subcmd__help__subcmd__dashboard_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git help dashboard commands' commands "$@"
 }
-(( $+functions[_repoutil__git__help__fetch_commands] )) ||
-_repoutil__git__help__fetch_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__help__subcmd__fetch_commands] )) ||
+_repoutil__subcmd__git__subcmd__help__subcmd__fetch_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git help fetch commands' commands "$@"
 }
-(( $+functions[_repoutil__git__help__help_commands] )) ||
-_repoutil__git__help__help_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__help__subcmd__help_commands] )) ||
+_repoutil__subcmd__git__subcmd__help__subcmd__help_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git help help commands' commands "$@"
 }
-(( $+functions[_repoutil__git__help__pull_commands] )) ||
-_repoutil__git__help__pull_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__help__subcmd__pull_commands] )) ||
+_repoutil__subcmd__git__subcmd__help__subcmd__pull_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git help pull commands' commands "$@"
 }
-(( $+functions[_repoutil__git__help__push_commands] )) ||
-_repoutil__git__help__push_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__help__subcmd__push_commands] )) ||
+_repoutil__subcmd__git__subcmd__help__subcmd__push_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git help push commands' commands "$@"
 }
-(( $+functions[_repoutil__git__help__stashcount_commands] )) ||
-_repoutil__git__help__stashcount_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__help__subcmd__stashcount_commands] )) ||
+_repoutil__subcmd__git__subcmd__help__subcmd__stashcount_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git help stashcount commands' commands "$@"
 }
-(( $+functions[_repoutil__git__help__stat_commands] )) ||
-_repoutil__git__help__stat_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__help__subcmd__stat_commands] )) ||
+_repoutil__subcmd__git__subcmd__help__subcmd__stat_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git help stat commands' commands "$@"
 }
-(( $+functions[_repoutil__git__help__unclean_commands] )) ||
-_repoutil__git__help__unclean_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__help__subcmd__unclean_commands] )) ||
+_repoutil__subcmd__git__subcmd__help__subcmd__unclean_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git help unclean commands' commands "$@"
 }
-(( $+functions[_repoutil__git__help__untracked_commands] )) ||
-_repoutil__git__help__untracked_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__help__subcmd__untracked_commands] )) ||
+_repoutil__subcmd__git__subcmd__help__subcmd__untracked_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git help untracked commands' commands "$@"
 }
-(( $+functions[_repoutil__git__pull_commands] )) ||
-_repoutil__git__pull_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__pull_commands] )) ||
+_repoutil__subcmd__git__subcmd__pull_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git pull commands' commands "$@"
 }
-(( $+functions[_repoutil__git__push_commands] )) ||
-_repoutil__git__push_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__push_commands] )) ||
+_repoutil__subcmd__git__subcmd__push_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git push commands' commands "$@"
 }
-(( $+functions[_repoutil__git__stashcount_commands] )) ||
-_repoutil__git__stashcount_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__stashcount_commands] )) ||
+_repoutil__subcmd__git__subcmd__stashcount_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git stashcount commands' commands "$@"
 }
-(( $+functions[_repoutil__git__stat_commands] )) ||
-_repoutil__git__stat_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__stat_commands] )) ||
+_repoutil__subcmd__git__subcmd__stat_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git stat commands' commands "$@"
 }
-(( $+functions[_repoutil__git__unclean_commands] )) ||
-_repoutil__git__unclean_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__unclean_commands] )) ||
+_repoutil__subcmd__git__subcmd__unclean_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git unclean commands' commands "$@"
 }
-(( $+functions[_repoutil__git__untracked_commands] )) ||
-_repoutil__git__untracked_commands() {
+(( $+functions[_repoutil__subcmd__git__subcmd__untracked_commands] )) ||
+_repoutil__subcmd__git__subcmd__untracked_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil git untracked commands' commands "$@"
 }
-(( $+functions[_repoutil__help_commands] )) ||
-_repoutil__help_commands() {
+(( $+functions[_repoutil__subcmd__help_commands] )) ||
+_repoutil__subcmd__help_commands() {
     local commands; commands=(
 'list:List directories tracked in ~/.repoutilrc' \
 'add:Add current directory to ~/.repoutilrc' \
@@ -519,13 +519,13 @@ _repoutil__help_commands() {
     )
     _describe -t commands 'repoutil help commands' commands "$@"
 }
-(( $+functions[_repoutil__help__add_commands] )) ||
-_repoutil__help__add_commands() {
+(( $+functions[_repoutil__subcmd__help__subcmd__add_commands] )) ||
+_repoutil__subcmd__help__subcmd__add_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil help add commands' commands "$@"
 }
-(( $+functions[_repoutil__help__git_commands] )) ||
-_repoutil__help__git_commands() {
+(( $+functions[_repoutil__subcmd__help__subcmd__git_commands] )) ||
+_repoutil__subcmd__help__subcmd__git_commands() {
     local commands; commands=(
 'stat:Show short status' \
 'fetch:Fetch commits and tags' \
@@ -540,86 +540,86 @@ _repoutil__help__git_commands() {
     )
     _describe -t commands 'repoutil help git commands' commands "$@"
 }
-(( $+functions[_repoutil__help__git__branches_commands] )) ||
-_repoutil__help__git__branches_commands() {
+(( $+functions[_repoutil__subcmd__help__subcmd__git__subcmd__branches_commands] )) ||
+_repoutil__subcmd__help__subcmd__git__subcmd__branches_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil help git branches commands' commands "$@"
 }
-(( $+functions[_repoutil__help__git__branchstat_commands] )) ||
-_repoutil__help__git__branchstat_commands() {
+(( $+functions[_repoutil__subcmd__help__subcmd__git__subcmd__branchstat_commands] )) ||
+_repoutil__subcmd__help__subcmd__git__subcmd__branchstat_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil help git branchstat commands' commands "$@"
 }
-(( $+functions[_repoutil__help__git__dashboard_commands] )) ||
-_repoutil__help__git__dashboard_commands() {
+(( $+functions[_repoutil__subcmd__help__subcmd__git__subcmd__dashboard_commands] )) ||
+_repoutil__subcmd__help__subcmd__git__subcmd__dashboard_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil help git dashboard commands' commands "$@"
 }
-(( $+functions[_repoutil__help__git__fetch_commands] )) ||
-_repoutil__help__git__fetch_commands() {
+(( $+functions[_repoutil__subcmd__help__subcmd__git__subcmd__fetch_commands] )) ||
+_repoutil__subcmd__help__subcmd__git__subcmd__fetch_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil help git fetch commands' commands "$@"
 }
-(( $+functions[_repoutil__help__git__pull_commands] )) ||
-_repoutil__help__git__pull_commands() {
+(( $+functions[_repoutil__subcmd__help__subcmd__git__subcmd__pull_commands] )) ||
+_repoutil__subcmd__help__subcmd__git__subcmd__pull_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil help git pull commands' commands "$@"
 }
-(( $+functions[_repoutil__help__git__push_commands] )) ||
-_repoutil__help__git__push_commands() {
+(( $+functions[_repoutil__subcmd__help__subcmd__git__subcmd__push_commands] )) ||
+_repoutil__subcmd__help__subcmd__git__subcmd__push_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil help git push commands' commands "$@"
 }
-(( $+functions[_repoutil__help__git__stashcount_commands] )) ||
-_repoutil__help__git__stashcount_commands() {
+(( $+functions[_repoutil__subcmd__help__subcmd__git__subcmd__stashcount_commands] )) ||
+_repoutil__subcmd__help__subcmd__git__subcmd__stashcount_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil help git stashcount commands' commands "$@"
 }
-(( $+functions[_repoutil__help__git__stat_commands] )) ||
-_repoutil__help__git__stat_commands() {
+(( $+functions[_repoutil__subcmd__help__subcmd__git__subcmd__stat_commands] )) ||
+_repoutil__subcmd__help__subcmd__git__subcmd__stat_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil help git stat commands' commands "$@"
 }
-(( $+functions[_repoutil__help__git__unclean_commands] )) ||
-_repoutil__help__git__unclean_commands() {
+(( $+functions[_repoutil__subcmd__help__subcmd__git__subcmd__unclean_commands] )) ||
+_repoutil__subcmd__help__subcmd__git__subcmd__unclean_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil help git unclean commands' commands "$@"
 }
-(( $+functions[_repoutil__help__git__untracked_commands] )) ||
-_repoutil__help__git__untracked_commands() {
+(( $+functions[_repoutil__subcmd__help__subcmd__git__subcmd__untracked_commands] )) ||
+_repoutil__subcmd__help__subcmd__git__subcmd__untracked_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil help git untracked commands' commands "$@"
 }
-(( $+functions[_repoutil__help__help_commands] )) ||
-_repoutil__help__help_commands() {
+(( $+functions[_repoutil__subcmd__help__subcmd__help_commands] )) ||
+_repoutil__subcmd__help__subcmd__help_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil help help commands' commands "$@"
 }
-(( $+functions[_repoutil__help__jj_commands] )) ||
-_repoutil__help__jj_commands() {
+(( $+functions[_repoutil__subcmd__help__subcmd__jj_commands] )) ||
+_repoutil__subcmd__help__subcmd__jj_commands() {
     local commands; commands=(
 'stat:Get status of all repositories' \
 'sync:Pull all repositories' \
     )
     _describe -t commands 'repoutil help jj commands' commands "$@"
 }
-(( $+functions[_repoutil__help__jj__stat_commands] )) ||
-_repoutil__help__jj__stat_commands() {
+(( $+functions[_repoutil__subcmd__help__subcmd__jj__subcmd__stat_commands] )) ||
+_repoutil__subcmd__help__subcmd__jj__subcmd__stat_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil help jj stat commands' commands "$@"
 }
-(( $+functions[_repoutil__help__jj__sync_commands] )) ||
-_repoutil__help__jj__sync_commands() {
+(( $+functions[_repoutil__subcmd__help__subcmd__jj__subcmd__sync_commands] )) ||
+_repoutil__subcmd__help__subcmd__jj__subcmd__sync_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil help jj sync commands' commands "$@"
 }
-(( $+functions[_repoutil__help__list_commands] )) ||
-_repoutil__help__list_commands() {
+(( $+functions[_repoutil__subcmd__help__subcmd__list_commands] )) ||
+_repoutil__subcmd__help__subcmd__list_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil help list commands' commands "$@"
 }
-(( $+functions[_repoutil__jj_commands] )) ||
-_repoutil__jj_commands() {
+(( $+functions[_repoutil__subcmd__jj_commands] )) ||
+_repoutil__subcmd__jj_commands() {
     local commands; commands=(
 'stat:Get status of all repositories' \
 'sync:Pull all repositories' \
@@ -627,8 +627,8 @@ _repoutil__jj_commands() {
     )
     _describe -t commands 'repoutil jj commands' commands "$@"
 }
-(( $+functions[_repoutil__jj__help_commands] )) ||
-_repoutil__jj__help_commands() {
+(( $+functions[_repoutil__subcmd__jj__subcmd__help_commands] )) ||
+_repoutil__subcmd__jj__subcmd__help_commands() {
     local commands; commands=(
 'stat:Get status of all repositories' \
 'sync:Pull all repositories' \
@@ -636,33 +636,33 @@ _repoutil__jj__help_commands() {
     )
     _describe -t commands 'repoutil jj help commands' commands "$@"
 }
-(( $+functions[_repoutil__jj__help__help_commands] )) ||
-_repoutil__jj__help__help_commands() {
+(( $+functions[_repoutil__subcmd__jj__subcmd__help__subcmd__help_commands] )) ||
+_repoutil__subcmd__jj__subcmd__help__subcmd__help_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil jj help help commands' commands "$@"
 }
-(( $+functions[_repoutil__jj__help__stat_commands] )) ||
-_repoutil__jj__help__stat_commands() {
+(( $+functions[_repoutil__subcmd__jj__subcmd__help__subcmd__stat_commands] )) ||
+_repoutil__subcmd__jj__subcmd__help__subcmd__stat_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil jj help stat commands' commands "$@"
 }
-(( $+functions[_repoutil__jj__help__sync_commands] )) ||
-_repoutil__jj__help__sync_commands() {
+(( $+functions[_repoutil__subcmd__jj__subcmd__help__subcmd__sync_commands] )) ||
+_repoutil__subcmd__jj__subcmd__help__subcmd__sync_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil jj help sync commands' commands "$@"
 }
-(( $+functions[_repoutil__jj__stat_commands] )) ||
-_repoutil__jj__stat_commands() {
+(( $+functions[_repoutil__subcmd__jj__subcmd__stat_commands] )) ||
+_repoutil__subcmd__jj__subcmd__stat_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil jj stat commands' commands "$@"
 }
-(( $+functions[_repoutil__jj__sync_commands] )) ||
-_repoutil__jj__sync_commands() {
+(( $+functions[_repoutil__subcmd__jj__subcmd__sync_commands] )) ||
+_repoutil__subcmd__jj__subcmd__sync_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil jj sync commands' commands "$@"
 }
-(( $+functions[_repoutil__list_commands] )) ||
-_repoutil__list_commands() {
+(( $+functions[_repoutil__subcmd__list_commands] )) ||
+_repoutil__subcmd__list_commands() {
     local commands; commands=()
     _describe -t commands 'repoutil list commands' commands "$@"
 }
