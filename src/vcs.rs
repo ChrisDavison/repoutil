@@ -6,7 +6,7 @@ use std::path::Path;
 use std::process::Command;
 
 use crate::ansi_escape::*;
-use crate::util::{format_json, remove_common_ancestor};
+use crate::util::{format_json, path_output, remove_common_ancestor};
 
 pub mod git;
 
@@ -31,10 +31,5 @@ pub fn add() -> Result<()> {
 
 /// List each repo found
 pub fn list(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
-    let s = if fmt.use_json {
-        format_json(p, None, true, fmt.common_prefix)
-    } else {
-        remove_common_ancestor(p, fmt.common_prefix)
-    };
-    Ok(Some(s))
+    Ok(Some(path_output(p, fmt.use_json, fmt.common_prefix)))
 }

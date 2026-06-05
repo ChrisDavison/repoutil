@@ -119,11 +119,10 @@ fn main() {
         util::common_ancestor(&repos)
     };
 
-    let env_no_color = std::env::var_os("NO_COLOR").is_some();
     let computed_no_colour = match args.color {
         ColorChoice::Always => false,
         ColorChoice::Never => true,
-        ColorChoice::Auto => env_no_color,
+        ColorChoice::Auto => !ansi_escape::should_color_stdout(),
     } || args.no_colour;
 
     let fmt = FormatOpts {

@@ -1,4 +1,12 @@
 use super::*;
+use crate::util::path_output;
+
+const SYM_AHEAD: &str = "↑";
+const SYM_BEHIND: &str = "↓";
+const SYM_MODIFIED: &str = "±";
+#[cfg(feature = "jj")]
+const SYM_JJ_MUTABLE: &str = "▲";
+const SYM_BAR: &str = "░";
 
 pub fn is_repo(p: &Path) -> bool {
     let mut p = p.to_path_buf();
@@ -48,10 +56,8 @@ pub fn needs_attention(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         Ok(Some(output)) => {
             if output.is_empty() {
                 Ok(None)
-            } else if fmt.use_json {
-                Ok(Some(format_json(p, None, true, fmt.common_prefix)))
             } else {
-                Ok(Some(remove_common_ancestor(p, fmt.common_prefix)))
+                Ok(Some(path_output(p, fmt.use_json, fmt.common_prefix)))
             }
         }
         Ok(None) => Ok(None),
@@ -61,37 +67,17 @@ pub fn needs_attention(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
 
 /// List each untracked repo found
 pub fn untracked(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
-    let s = if fmt.use_json {
-        format_json(p, None, true, fmt.common_prefix)
-    } else {
-        remove_common_ancestor(p, fmt.common_prefix)
-    };
-    Ok(Some(s))
+    Ok(Some(path_output(p, fmt.use_json, fmt.common_prefix)))
 }
 
 /// Get the short status (ahead, behind, and modified files) of a repo
 pub fn stat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
-    // Parse git status into branch info and vector of (status, filepath) tuples
     let (branch, status_vec) = parse_git_status(p)?;
 
-    let branch_colours = if fmt.no_colour { vec![] } else { vec![BLUE] };
-    let commit_colours = if fmt.no_colour { vec![] } else { vec![YELLOW] };
-    let formatted_branch = if fmt.no_colour {
-        branch.clone()
-    } else {
-        colour(&branch, &branch_colours)
-    };
-
-    // Get short commit hash
+    let formatted_branch = apply_color(branch.clone(), fmt.no_colour, &[BLUE]);
     let commit_hash = get_short_commit_hash(p)?;
+    let formatted_commit = apply_color(commit_hash.clone(), fmt.no_colour, &[YELLOW]);
 
-    let formatted_commit = if fmt.no_colour {
-        commit_hash.clone()
-    } else {
-        colour(&commit_hash, &commit_colours)
-    };
-
-    // Format file list from status vector
     let file_list = format_file_list(&status_vec, fmt);
     if file_list.is_empty() {
         return Ok(None);
@@ -102,7 +88,7 @@ pub fn stat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     } else {
         format!(
             "{} on {formatted_branch} at {formatted_commit}\n{}\n",
-            colour(remove_common_ancestor(p, fmt.common_prefix), &[PURPLE]),
+            apply_color(remove_common_ancestor(p, fmt.common_prefix), fmt.no_colour, &[PURPLE]),
             file_list
         )
     };
@@ -127,16 +113,8 @@ pub fn stashcount(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
             let simple_path = remove_common_ancestor(p, fmt.common_prefix);
             format!(
                 "{:30}\t{}",
-                if fmt.no_colour {
-                    simple_path
-                } else {
-                    colour(simple_path, &[RED])
-                },
-                if fmt.no_colour {
-                    stashes.to_string()
-                } else {
-                    colour(stashes.to_string(), &[GREEN])
-                },
+                apply_color(simple_path, fmt.no_colour, &[RED]),
+                apply_color(stashes.to_string(), fmt.no_colour, &[GREEN]),
             )
         };
         Ok(Some(s))
@@ -172,7 +150,6 @@ pub fn branches(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
 
 /// Parse git status with robust null-separated porcelain format
 fn parse_git_status(p: &Path) -> Result<(String, Vec<(String, String)>)> {
-    // First, get the branch name
     let branch_stdout = Command::new("git")
         .current_dir(p)
         .args(["symbolic-ref", "--short", "HEAD"])
@@ -185,21 +162,18 @@ fn parse_git_status(p: &Path) -> Result<(String, Vec<(String, String)>)> {
         std::str::from_utf8(&branch_stdout)?.trim().to_string()
     };
 
-    // Use porcelain -z for safe null-separated output
     let stdout = Command::new("git")
         .current_dir(p)
         .args(["status", "--porcelain=v1", "-z"])
         .output()?
         .stdout;
 
-    // Split on null byte and parse
     let mut result = Vec::new();
     for entry in stdout.split(|&b| b == 0) {
         if entry.is_empty() {
             continue;
         }
         if let Ok(s) = std::str::from_utf8(entry) {
-            // Porcelain format: "XY PATH"
             if s.len() > 3 {
                 let status = s[..2].to_string();
                 let filepath = s[3..].to_string();
@@ -223,7 +197,6 @@ fn get_short_commit_hash(p: &Path) -> Result<String> {
 
 /// Get recent commits - last week's commits if any, otherwise 10 most recent
 fn get_recent_commits(p: &Path) -> Result<String> {
-    // Try to get commits from last week first
     let stdout = Command::new("git")
         .current_dir(p)
         .args([
@@ -241,7 +214,6 @@ fn get_recent_commits(p: &Path) -> Result<String> {
     if !commits.is_empty() {
         Ok(commits.to_string())
     } else {
-        // Fallback to 10 most recent commits
         let stdout = Command::new("git")
             .current_dir(p)
             .args([
@@ -264,81 +236,50 @@ fn format_file_list(status_vec: &[(String, String)], fmt: &FormatOpts) -> String
         return String::new();
     }
 
-    let colours = if fmt.no_colour { vec![] } else { vec![GREEN] };
     status_vec
         .iter()
         .map(|(status, filepath)| {
-            let formatted_status = if fmt.no_colour {
-                status.clone()
-            } else {
-                colour(status, &colours)
-            };
+            let formatted_status = apply_color(status.clone(), fmt.no_colour, &[GREEN]);
             format!("{} {}", formatted_status, filepath)
         })
         .collect::<Vec<_>>()
         .join("\n")
 }
 
-/// Dashboard ... repo status, and recent commits
+/// Dashboard: repo status and recent commits (only for repos with changes)
 pub fn dashboard(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
-    if let Ok(Some(_)) = needs_attention(p, fmt) {
-        // Parse git status into branch info and vector of (status, filepath) tuples
-        let (branch, status_vec) = parse_git_status(p)?;
-
-        // Get short commit hash
-        let commit_hash = get_short_commit_hash(p)?;
-
-        // Format file list from status vector
-        let file_list = format_file_list(&status_vec, fmt);
-
-        // Get recent commits
-        let commits = get_recent_commits(p)?;
-
-        // Build the output
-        let repo_name = remove_common_ancestor(p, fmt.common_prefix);
-
-        // Add branch and commit info
-        let branch_colours = if fmt.no_colour { vec![] } else { vec![BLUE] };
-        let commit_colours = if fmt.no_colour { vec![] } else { vec![YELLOW] };
-        let formatted_branch = if fmt.no_colour {
-            branch.clone()
-        } else {
-            colour(&branch, &branch_colours)
-        };
-        let formatted_commit = if fmt.no_colour {
-            commit_hash.clone()
-        } else {
-            colour(&commit_hash, &commit_colours)
-        };
-        let mut output = String::new();
-
-        // Add file list if there are any files
-        if !file_list.is_empty() {
-            output.push_str(&file_list);
-        }
-
-        // Add commits if there are any
-        if !commits.is_empty() {
-            output.push_str("\n\n");
-            output.push_str("Recent commits:\n");
-            let commit_lines: Vec<&str> = commits.lines().collect();
-            for line in commit_lines {
-                output.push_str(&format!("{}\n", line));
-            }
-        }
-        let bar = colour("░", &[BLACK]);
-        Ok(Some(format!(
-            "\n{} on {formatted_branch} at {formatted_commit}\n{}",
-            colour(&repo_name, &[PURPLE]),
-            output
-                .lines()
-                .map(|x| format!("{bar} {x}"))
-                .collect::<Vec<_>>()
-                .join("\n"),
-        )))
-    } else {
-        Ok(None)
+    let (branch, status_vec) = parse_git_status(p)?;
+    if status_vec.is_empty() {
+        return Ok(None);
     }
+
+    let commit_hash = get_short_commit_hash(p)?;
+    let file_list = format_file_list(&status_vec, fmt);
+    let commits = get_recent_commits(p)?;
+    let repo_name = remove_common_ancestor(p, fmt.common_prefix);
+
+    let formatted_branch = apply_color(branch, fmt.no_colour, &[BLUE]);
+    let formatted_commit = apply_color(commit_hash, fmt.no_colour, &[YELLOW]);
+
+    let mut output = String::new();
+    if !file_list.is_empty() {
+        output.push_str(&file_list);
+    }
+    if !commits.is_empty() {
+        output.push_str("\n\nRecent commits:\n");
+        output.push_str(&commits);
+    }
+
+    let bar = apply_color(SYM_BAR, fmt.no_colour, &[BLACK]);
+    Ok(Some(format!(
+        "\n{} on {formatted_branch} at {formatted_commit}\n{}",
+        apply_color(repo_name, fmt.no_colour, &[PURPLE]),
+        output
+            .lines()
+            .map(|x| format!("{bar} {x}"))
+            .collect::<Vec<_>>()
+            .join("\n"),
+    )))
 }
 
 /// Get the status _of each branch_
@@ -352,21 +293,16 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
 
     let branch_line = response.next();
 
-    // Get the 'ahead/behind' status
     let mut parts = Vec::new();
-    let colours = if fmt.no_colour { vec![] } else { vec![BLUE] };
     if let Some(response) = branch_line.filter(|x| x.contains('[')) {
-        // We're already filtering on contains, so safe to unwrap
         let start = response.find('[').unwrap();
         let end = response.find(']').unwrap();
         let s = response[start + 1..end]
-            .replace("ahead ", "↑")
-            .replace("behind ", "↓")
-            .to_string();
-        parts.push(colour(s, &colours))
+            .replace("ahead ", SYM_AHEAD)
+            .replace("behind ", SYM_BEHIND);
+        parts.push(apply_color(s, fmt.no_colour, &[BLUE]));
     }
 
-    // Now go through each file reported, and count modified or untracked
     let mut n_modified = 0;
     let mut n_untracked = 0;
     for line in response {
@@ -385,21 +321,19 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     }
 
     if n_modified > 0 {
-        let s = format!("{}±", n_modified);
-        parts.push(if fmt.no_colour {
-            s
-        } else {
-            colour(s, &[GREEN])
-        })
-    };
+        parts.push(apply_color(
+            format!("{}{SYM_MODIFIED}", n_modified),
+            fmt.no_colour,
+            &[GREEN],
+        ));
+    }
     if n_untracked > 0 {
-        let s = format!("{}?", n_untracked);
-        parts.push(if fmt.no_colour {
-            s
-        } else {
-            colour(s, &[YELLOW])
-        })
-    };
+        parts.push(apply_color(
+            format!("{}?", n_untracked),
+            fmt.no_colour,
+            &[YELLOW],
+        ));
+    }
 
     #[cfg(feature = "jj")]
     {
@@ -412,17 +346,15 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
             std::str::from_utf8(&stdout)?.lines().count()
         };
         if jj_mutable != 0 {
-            let s = format!("{}▲", jj_mutable);
-            parts.push(if fmt.no_colour {
-                s
-            } else {
-                colour(s, &[YELLOW])
-            })
+            parts.push(apply_color(
+                format!("{}{SYM_JJ_MUTABLE}", jj_mutable),
+                fmt.no_colour,
+                &[YELLOW],
+            ));
         }
     }
 
     let joined = parts.join(", ");
-
     if joined.is_empty() {
         return Ok(None);
     }
@@ -430,14 +362,10 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     let s = if fmt.use_json {
         format_json(p, Some(&joined), true, fmt.common_prefix)
     } else {
-        let s = remove_common_ancestor(p, fmt.common_prefix);
+        let path = remove_common_ancestor(p, fmt.common_prefix);
         format!(
-            "{:40} | {}",
-            if fmt.no_colour {
-                s
-            } else {
-                colour(s, &[BOLD, RED])
-            },
+            "{:35} {}",
+            apply_color(path, fmt.no_colour, &[BOLD, RED]),
             joined
         )
     };

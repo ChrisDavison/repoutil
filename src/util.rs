@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use anyhow::{anyhow, Result};
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
@@ -39,6 +38,14 @@ pub fn format_json(
         })
     };
     obj.to_string()
+}
+
+pub fn path_output(p: &Path, use_json: bool, common_prefix: Option<&PathBuf>) -> String {
+    if use_json {
+        format_json(p, None, true, common_prefix)
+    } else {
+        remove_common_ancestor(p, common_prefix)
+    }
 }
 
 pub fn homedir(s: &str) -> Result<PathBuf> {
@@ -143,10 +150,10 @@ pub fn get_repos_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
     }
     includes.sort();
     includes.dedup();
+    let exclude_set: std::collections::HashSet<_> = excludes.iter().collect();
     let includes = includes
-        .iter()
-        .filter(|x| !excludes.contains(x))
-        .cloned()
+        .into_iter()
+        .filter(|x| !exclude_set.contains(x))
         .collect();
     Ok((includes, excludes))
 }
