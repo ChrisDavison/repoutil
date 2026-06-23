@@ -3,8 +3,8 @@ use rayon::prelude::*;
 use std::path::PathBuf;
 
 mod ansi_escape;
+mod git;
 mod util;
-mod vcs;
 
 /// Run common operations across many repositories
 #[derive(Debug, Parser)] // requires `derive` feature
@@ -42,18 +42,9 @@ enum Command {
     /// Show short status
     #[command(aliases = &["s", "st"])]
     Stat,
-    /// Display git dashboard
-    #[command(aliases = &["d", "dash"])]
-    Dashboard,
     /// List short status of all branches
     #[command(aliases = &["bs"])]
     Branchstat,
-    /// Push commits
-    #[command(alias = "p", hide = true)]
-    Push,
-    /// Pull commits
-    #[command(alias = "pu", hide = true)]
-    Pull,
     /// List repos with local changes
     #[command(aliases = &["u"], hide=true)]
     Unclean,
@@ -66,15 +57,6 @@ enum Command {
     /// Count stashes
     #[command(aliases = &["sc"], hide=true)]
     Stashcount,
-
-    #[cfg(feature = "jj")]
-    /// Get status of all repositories
-    #[command(aliases = &["jj"], hide=true)]
-    JJStat,
-    #[cfg(feature = "jj")]
-    #[command(aliases = &["jjs"], hide=true)]
-    /// Pull all repositories
-    JJSync,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
@@ -134,27 +116,20 @@ fn main() {
     let cmd = match args.command {
         // Works with any directory
         Command::Add => {
-            if let Err(e) = vcs::add() {
+            if let Err(e) = git::add() {
                 println!("{}", e);
                 std::process::exit(1);
             }
             return;
         }
-        Command::List => vcs::list,
-        Command::Push => vcs::git::push,
-        Command::Fetch => vcs::git::fetch,
-        Command::Stat => vcs::git::stat,
-        Command::Pull => vcs::git::pull,
-        Command::Unclean => vcs::git::needs_attention,
-        Command::Branchstat => vcs::git::branchstat,
-        Command::Stashcount => vcs::git::stashcount,
-        Command::Branches => vcs::git::branches,
-        Command::Untracked => vcs::git::untracked,
-        Command::Dashboard => vcs::git::dashboard,
-        #[cfg(feature = "jj")]
-        Command::JJStat => vcs::jj::stat,
-        #[cfg(feature = "jj")]
-        Command::JJSync => vcs::jj::sync,
+        Command::List => git::list,
+        Command::Fetch => git::fetch,
+        Command::Stat => git::stat,
+        Command::Unclean => git::needs_attention,
+        Command::Branchstat => git::branchstat,
+        Command::Stashcount => git::stashcount,
+        Command::Branches => git::branches,
+        Command::Untracked => git::untracked,
     };
 
     let outs: Vec<_> = repos

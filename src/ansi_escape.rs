@@ -1,5 +1,6 @@
 pub const BOLD: &str = "\x1b[1m";
 
+#[allow(dead_code)]
 pub const BLACK: &str = "\x1b[30m";
 pub const RED: &str = "\x1b[31m";
 pub const GREEN: &str = "\x1b[32m";

@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use std::fs::read_dir;
 use std::path::{Path, PathBuf};
 
-use crate::vcs;
+use crate::git;
 use serde_json::json;
 
 pub fn remove_common_ancestor(repo: &Path, common: Option<&PathBuf>) -> String {
@@ -126,7 +126,7 @@ pub fn get_repos_from_dir(dir: &Path) -> Result<Vec<PathBuf>> {
     let mut repos: Vec<PathBuf> = read_dir(dir)?
         .filter_map(|d| d.ok())
         .map(|d| d.path())
-        .filter(|d| vcs::git::is_repo(d))
+        .filter(|d| git::is_repo(d))
         .collect();
     repos.sort();
     Ok(repos)
@@ -136,13 +136,13 @@ pub fn get_repos_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
     let (inc, exc) = get_dirs_from_config()?;
     let excludes: Vec<_> = exc
         .iter()
-        .filter(|dir| vcs::git::is_repo(dir))
+        .filter(|dir| git::is_repo(dir))
         .cloned()
         .collect();
 
     let mut includes = Vec::with_capacity(inc.len());
     for dir in inc {
-        if vcs::git::is_repo(&dir) {
+        if git::is_repo(&dir) {
             includes.push(dir);
         } else if let Ok(repos) = get_repos_from_dir(&dir) {
             includes.extend(repos.iter().map(|p| p.to_path_buf()));

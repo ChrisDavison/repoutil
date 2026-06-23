@@ -1,41 +1,44 @@
-use super::*;
-use crate::util::path_output;
+use crate::FormatOpts;
+
+use anyhow::{anyhow, Result};
+use std::io::Write;
+use std::path::Path;
+use std::process::Command;
+
+use crate::ansi_escape::*;
+use crate::util::{format_json, path_output, remove_common_ancestor};
 
 const SYM_AHEAD: &str = "↑";
 const SYM_BEHIND: &str = "↓";
 const SYM_MODIFIED: &str = "±";
 #[cfg(feature = "jj")]
-const SYM_JJ_MUTABLE: &str = "▲";
-const SYM_BAR: &str = "░";
+const SYM_JJ_MUTABLE: &str = "*";
+
+pub fn add() -> Result<()> {
+    let config_filename = crate::util::homedir(".repoutilrc")?;
+    let curdir = std::env::current_dir()?;
+    if is_repo(&curdir) {
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(config_filename)?;
+
+        writeln!(file, "{}", curdir.to_string_lossy())?;
+        Ok(())
+    } else {
+        Err(anyhow!("Don't appear to be in the root of a git repo."))
+    }
+}
+
+/// List each repo found
+pub fn list(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
+    Ok(Some(path_output(p, fmt.use_json, fmt.common_prefix)))
+}
 
 pub fn is_repo(p: &Path) -> bool {
     let mut p = p.to_path_buf();
     p.push(".git");
     p.exists()
-}
-
-/// Push all changes to the branch
-pub fn pull(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
-    let status = Command::new("git")
-        .current_dir(p)
-        .args(["pull", "--rebase"])
-        .status()?;
-    if !status.success() {
-        return Err(anyhow!("git pull failed for {}", p.display()));
-    }
-    branchstat(p, fmt)
-}
-
-/// Push all changes to the branch
-pub fn push(p: &Path, _fmt: &FormatOpts) -> Result<Option<String>> {
-    let status = Command::new("git")
-        .current_dir(p)
-        .args(["push", "--all", "--tags"])
-        .status()?;
-    if !status.success() {
-        return Err(anyhow!("git push failed for {}", p.display()));
-    }
-    Ok(None)
 }
 
 /// Fetch all branches of a git repo
@@ -88,7 +91,11 @@ pub fn stat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     } else {
         format!(
             "{} on {formatted_branch} at {formatted_commit}\n{}\n",
-            apply_color(remove_common_ancestor(p, fmt.common_prefix), fmt.no_colour, &[PURPLE]),
+            apply_color(
+                remove_common_ancestor(p, fmt.common_prefix),
+                fmt.no_colour,
+                &[PURPLE]
+            ),
             file_list
         )
     };
@@ -195,41 +202,6 @@ fn get_short_commit_hash(p: &Path) -> Result<String> {
     Ok(std::str::from_utf8(&stdout)?.trim().to_string())
 }
 
-/// Get recent commits - last week's commits if any, otherwise 10 most recent
-fn get_recent_commits(p: &Path) -> Result<String> {
-    let stdout = Command::new("git")
-        .current_dir(p)
-        .args([
-            "log",
-            "--since=1.week.ago",
-            "--pretty=lo",
-            "--color=always",
-            "--date=short",
-        ])
-        .output()?
-        .stdout;
-
-    let commits = std::str::from_utf8(&stdout)?.trim();
-
-    if !commits.is_empty() {
-        Ok(commits.to_string())
-    } else {
-        let stdout = Command::new("git")
-            .current_dir(p)
-            .args([
-                "log",
-                "-n",
-                "10",
-                "--pretty=lo",
-                "--color=always",
-                "--date=short",
-            ])
-            .output()?
-            .stdout;
-        Ok(std::str::from_utf8(&stdout)?.trim().to_string())
-    }
-}
-
 /// Format the file list from status vector for display
 fn format_file_list(status_vec: &[(String, String)], fmt: &FormatOpts) -> String {
     if status_vec.is_empty() {
@@ -244,42 +216,6 @@ fn format_file_list(status_vec: &[(String, String)], fmt: &FormatOpts) -> String
         })
         .collect::<Vec<_>>()
         .join("\n")
-}
-
-/// Dashboard: repo status and recent commits (only for repos with changes)
-pub fn dashboard(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
-    let (branch, status_vec) = parse_git_status(p)?;
-    if status_vec.is_empty() {
-        return Ok(None);
-    }
-
-    let commit_hash = get_short_commit_hash(p)?;
-    let file_list = format_file_list(&status_vec, fmt);
-    let commits = get_recent_commits(p)?;
-    let repo_name = remove_common_ancestor(p, fmt.common_prefix);
-
-    let formatted_branch = apply_color(branch, fmt.no_colour, &[BLUE]);
-    let formatted_commit = apply_color(commit_hash, fmt.no_colour, &[YELLOW]);
-
-    let mut output = String::new();
-    if !file_list.is_empty() {
-        output.push_str(&file_list);
-    }
-    if !commits.is_empty() {
-        output.push_str("\n\nRecent commits:\n");
-        output.push_str(&commits);
-    }
-
-    let bar = apply_color(SYM_BAR, fmt.no_colour, &[BLACK]);
-    Ok(Some(format!(
-        "\n{} on {formatted_branch} at {formatted_commit}\n{}",
-        apply_color(repo_name, fmt.no_colour, &[PURPLE]),
-        output
-            .lines()
-            .map(|x| format!("{bar} {x}"))
-            .collect::<Vec<_>>()
-            .join("\n"),
-    )))
 }
 
 /// Get the status _of each branch_
@@ -364,7 +300,7 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     } else {
         let path = remove_common_ancestor(p, fmt.common_prefix);
         format!(
-            "{:35} {}",
+            "{:40} {}",
             apply_color(path, fmt.no_colour, &[BOLD, RED]),
             joined
         )
