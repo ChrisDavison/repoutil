@@ -12,17 +12,12 @@ mod util;
 #[command(about = "Run common operations across many repositories", long_about = None)]
 struct Cli {
     #[command(subcommand)]
-    command: Command,
-    #[arg(short, long)]
-    use_json: bool,
+    command: Option<Command>,
     #[arg(short, long, hide = true)]
     no_colour: bool,
     /// Colorize output: auto (default), always, or never
     #[arg(long, value_enum, default_value_t = ColorChoice::Auto)]
     color: ColorChoice,
-    /// Limit thread pool size for parallel repo ops
-    #[arg(long)]
-    threads: Option<usize>,
     #[arg(short, long)]
     keep_home: bool,
 }
@@ -32,31 +27,16 @@ enum Command {
     /// Add the current directory to ~/.repoutilrc
     #[command(aliases = &["a"])]
     Add,
-    /// List directories tracked in ~/.repoutilrc
+    /// List directories (or glob matches) that will be tracked from ~/.repoutilrc
     #[command(aliases = &["ls", "l"])]
     List,
 
     /// Fetch commits and tags
     #[command(alias = "f")]
     Fetch,
-    /// Show short status
-    #[command(aliases = &["s", "st"])]
-    Stat,
     /// List short status of all branches
     #[command(aliases = &["bs"])]
     Branchstat,
-    /// List repos with local changes
-    #[command(aliases = &["u"], hide=true)]
-    Unclean,
-    /// List all branches
-    #[command(aliases = &["b"], hide=true)]
-    Branches,
-    /// List all untracked folders
-    #[command(aliases = &["un"], hide=true)]
-    Untracked,
-    /// Count stashes
-    #[command(aliases = &["sc"], hide=true)]
-    Stashcount,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
@@ -68,7 +48,6 @@ enum ColorChoice {
 
 #[derive(Clone)]
 struct FormatOpts<'a> {
-    use_json: bool,
     common_prefix: Option<&'a PathBuf>,
     no_colour: bool,
 }
@@ -76,25 +55,15 @@ struct FormatOpts<'a> {
 fn main() {
     let args = Cli::parse();
 
-    if let Some(n) = args.threads {
-        let _ = rayon::ThreadPoolBuilder::new()
-            .num_threads(n)
-            .build_global();
-    }
-
-    let (includes, excludes) = match util::get_repos_from_config() {
-        Ok((i, e)) => (i, e),
+    let (includes, _excludes) = match util::get_repos_from_config() {
         Err(err) => {
             eprintln!("ERR `{}`", err);
             std::process::exit(1);
         }
+        Ok((i, e)) => (i, e),
     };
 
-    let repos = if args.command == Command::Untracked {
-        excludes
-    } else {
-        includes
-    };
+    let repos = includes;
     let common = if args.keep_home {
         PathBuf::new()
     } else {
@@ -108,12 +77,11 @@ fn main() {
     } || args.no_colour;
 
     let fmt = FormatOpts {
-        use_json: args.use_json,
         common_prefix: if args.keep_home { None } else { Some(&common) },
         no_colour: computed_no_colour,
     };
 
-    let cmd = match args.command {
+    let cmd = match args.command.unwrap_or(Command::Branchstat) {
         // Works with any directory
         Command::Add => {
             if let Err(e) = git::add() {
@@ -124,12 +92,7 @@ fn main() {
         }
         Command::List => git::list,
         Command::Fetch => git::fetch,
-        Command::Stat => git::stat,
-        Command::Unclean => git::needs_attention,
         Command::Branchstat => git::branchstat,
-        Command::Stashcount => git::stashcount,
-        Command::Branches => git::branches,
-        Command::Untracked => git::untracked,
     };
 
     let outs: Vec<_> = repos
@@ -138,9 +101,5 @@ fn main() {
         .filter_map(|r| r)
         .collect();
 
-    if args.use_json {
-        println!(r#"{{"items": [{}]}}"#, outs.join(", "));
-    } else {
-        println!("{}", outs.join("\n"));
-    }
+    println!("{}", outs.join("\n"));
 }

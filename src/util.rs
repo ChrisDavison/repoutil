@@ -3,7 +3,7 @@ use std::fs::read_dir;
 use std::path::{Path, PathBuf};
 
 use crate::git;
-use serde_json::json;
+// use serde_json::json;
 
 pub fn remove_common_ancestor(repo: &Path, common: Option<&PathBuf>) -> String {
     if let Some(prefix) = common {
@@ -13,39 +13,35 @@ pub fn remove_common_ancestor(repo: &Path, common: Option<&PathBuf>) -> String {
     }
 }
 
-pub fn format_json(
-    title: &Path,
-    subtitle: Option<&str>,
-    path_as_arg: bool,
-    common: Option<&PathBuf>,
-) -> String {
-    let arg = if path_as_arg {
-        title.display().to_string()
-    } else {
-        String::new()
-    };
-    let title = remove_common_ancestor(title, common);
-    let obj = if let Some(sub) = subtitle {
-        json!({
-            "title": title,
-            "arg": arg,
-            "subtitle": sub,
-        })
-    } else {
-        json!({
-            "title": title,
-            "arg": arg,
-        })
-    };
-    obj.to_string()
-}
+// pub fn format_json(
+//     title: &Path,
+//     subtitle: Option<&str>,
+//     path_as_arg: bool,
+//     common: Option<&PathBuf>,
+// ) -> String {
+//     let arg = if path_as_arg {
+//         title.display().to_string()
+//     } else {
+//         String::new()
+//     };
+//     let title = remove_common_ancestor(title, common);
+//     let obj = if let Some(sub) = subtitle {
+//         json!({
+//             "title": title,
+//             "arg": arg,
+//             "subtitle": sub,
+//         })
+//     } else {
+//         json!({
+//             "title": title,
+//             "arg": arg,
+//         })
+//     };
+//     obj.to_string()
+// }
 
-pub fn path_output(p: &Path, use_json: bool, common_prefix: Option<&PathBuf>) -> String {
-    if use_json {
-        format_json(p, None, true, common_prefix)
-    } else {
-        remove_common_ancestor(p, common_prefix)
-    }
+pub fn path_output(p: &Path, common_prefix: Option<&PathBuf>) -> String {
+    remove_common_ancestor(p, common_prefix)
 }
 
 pub fn homedir(s: &str) -> Result<PathBuf> {
