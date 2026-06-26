@@ -37,6 +37,10 @@ enum Command {
     /// List short status of all branches
     #[command(aliases = &["bs"])]
     Branchstat,
+
+    /// List branches
+    #[command(aliases = &["b"])]
+    Branches,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
@@ -93,6 +97,7 @@ fn main() {
         Command::List => git::list,
         Command::Fetch => git::fetch,
         Command::Branchstat => git::branchstat,
+        Command::Branches => git::branches,
     };
 
     let outs: Vec<_> = repos

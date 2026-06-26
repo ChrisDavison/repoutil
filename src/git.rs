@@ -121,28 +121,28 @@ pub fn fetch(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
 //     }
 // }
 
-// /// Get a list of branches for the given git path
-// pub fn branches(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
-//     let stdout = Command::new("git")
-//         .current_dir(p)
-//         .args(["branch"])
-//         .output()?
-//         .stdout;
-//     let mut branches: Vec<&str> = std::str::from_utf8(&stdout)?.lines().collect();
-//     branches.sort();
-//     branches.reverse();
-//     let branches: String = branches
-//         .iter()
-//         .map(|x| x.trim().to_string())
-//         .collect::<Vec<_>>()
-//         .join(", ");
-//     let s = format!(
-//         "{:30}\t{}",
-//         remove_common_ancestor(p, fmt.common_prefix),
-//         branches
-//     );
-//     Ok(Some(s))
-// }
+/// Get a list of branches for the given git path
+pub fn branches(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
+    let stdout = Command::new("git")
+        .current_dir(p)
+        .args(["branch"])
+        .output()?
+        .stdout;
+    let mut branches: Vec<&str> = std::str::from_utf8(&stdout)?.lines().collect();
+    branches.sort();
+    branches.reverse();
+    let branches: String = branches
+        .iter()
+        .map(|x| x.trim().to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    let s = format!(
+        "{:30}\t{}",
+        remove_common_ancestor(p, fmt.common_prefix),
+        branches
+    );
+    Ok(Some(s))
+}
 
 // /// Parse git status with robust null-separated porcelain format
 // fn parse_git_status(p: &Path) -> Result<(String, Vec<(String, String)>)> {
