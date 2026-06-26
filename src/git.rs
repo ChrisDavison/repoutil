@@ -11,6 +11,7 @@ use crate::util::{path_output, remove_common_ancestor};
 const SYM_AHEAD: &str = "↑";
 const SYM_BEHIND: &str = "↓";
 const SYM_MODIFIED: &str = "±";
+const SYM_AHEAD_MAIN: &str = "⇡";
 #[cfg(feature = "jj")]
 const SYM_JJ_MUTABLE: &str = "*";
 
@@ -206,6 +207,45 @@ pub fn fetch(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
 //         .join("\n")
 // }
 
+fn resolve_default_branch(p: &Path) -> Option<String> {
+    if let Ok(output) = Command::new("git")
+        .current_dir(p)
+        .args(["symbolic-ref", "refs/remotes/origin/HEAD"])
+        .output()
+    {
+        if output.status.success() {
+            let ref_str = std::str::from_utf8(&output.stdout).ok()?.trim().to_string();
+            if let Some(branch) = ref_str.strip_prefix("refs/remotes/") {
+                return Some(branch.to_string());
+            }
+        }
+    }
+    for candidate in &["origin/main", "origin/master"] {
+        if let Ok(output) = Command::new("git")
+            .current_dir(p)
+            .args(["rev-parse", "--verify", candidate])
+            .output()
+        {
+            if output.status.success() {
+                return Some((*candidate).to_string());
+            }
+        }
+    }
+    None
+}
+
+fn ahead_of_default_branch(p: &Path) -> Option<usize> {
+    let default_ref = resolve_default_branch(p)?;
+    let stdout = Command::new("git")
+        .current_dir(p)
+        .args(["rev-list", "--count", &format!("{default_ref}..HEAD")])
+        .output()
+        .ok()?
+        .stdout;
+    let count: usize = std::str::from_utf8(&stdout).ok()?.trim().parse().ok()?;
+    Some(count)
+}
+
 /// Get the status _of each branch_
 pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     let stdout = Command::new("git")
@@ -274,6 +314,16 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
                 format!("{}{SYM_JJ_MUTABLE}", jj_mutable),
                 fmt.no_colour,
                 &[YELLOW],
+            ));
+        }
+    }
+
+    if let Some(n) = ahead_of_default_branch(p) {
+        if n > 0 {
+            parts.push(apply_color(
+                format!("{}{SYM_AHEAD_MAIN}", n),
+                fmt.no_colour,
+                &[GREEN],
             ));
         }
     }
