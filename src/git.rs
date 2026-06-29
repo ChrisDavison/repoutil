@@ -318,16 +318,6 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         }
     }
 
-    if let Some(n) = ahead_of_default_branch(p) {
-        if n > 0 {
-            parts.push(apply_color(
-                format!("{}{SYM_AHEAD_MAIN}", n),
-                fmt.no_colour,
-                &[GREEN],
-            ));
-        }
-    }
-
     let joined = parts.join(", ");
     if joined.is_empty() {
         return Ok(None);
