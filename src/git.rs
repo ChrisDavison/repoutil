@@ -11,7 +11,6 @@ use crate::util::{path_output, remove_common_ancestor};
 const SYM_AHEAD: &str = "↑";
 const SYM_BEHIND: &str = "↓";
 const SYM_MODIFIED: &str = "±";
-const SYM_AHEAD_MAIN: &str = "⇡";
 #[cfg(feature = "jj")]
 const SYM_JJ_MUTABLE: &str = "*";
 
@@ -54,73 +53,6 @@ pub fn fetch(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     branchstat(p, fmt)
 }
 
-// /// Get the name of any repo with local or remote changes
-// pub fn needs_attention(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
-//     match stat(p, &fmt.clone()) {
-//         Ok(Some(output)) => {
-//             if output.is_empty() {
-//                 Ok(None)
-//             } else {
-//                 Ok(Some(path_output(p, fmt.common_prefix)))
-//             }
-//         }
-//         Ok(None) => Ok(None),
-//         Err(e) => Err(e),
-//     }
-// }
-
-// /// List each untracked repo found
-// pub fn untracked(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
-//     Ok(Some(path_output(p, fmt.common_prefix)))
-// }
-
-// /// Get the short status (ahead, behind, and modified files) of a repo
-// pub fn stat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
-//     let (branch, status_vec) = parse_git_status(p)?;
-//
-//     let formatted_branch = apply_color(branch.clone(), fmt.no_colour, &[BLUE]);
-//     let commit_hash = get_short_commit_hash(p)?;
-//     let formatted_commit = apply_color(commit_hash.clone(), fmt.no_colour, &[YELLOW]);
-//
-//     let file_list = format_file_list(&status_vec, fmt);
-//     if file_list.is_empty() {
-//         return Ok(None);
-//     }
-//
-//     let s = format!(
-//         "{} on {formatted_branch} at {formatted_commit}\n{}\n",
-//         apply_color(
-//             remove_common_ancestor(p, fmt.common_prefix),
-//             fmt.no_colour,
-//             &[PURPLE]
-//         ),
-//         file_list
-//     );
-//
-//     Ok(Some(s))
-// }
-
-// /// Get a count of stashes
-// pub fn stashcount(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
-//     let stdout = Command::new("git")
-//         .current_dir(p)
-//         .args(["stash", "list"])
-//         .output()?
-//         .stdout;
-//     let stashes: usize = std::str::from_utf8(&stdout)?.lines().count();
-//     if stashes == 0 {
-//         Ok(None)
-//     } else {
-//         let simple_path = remove_common_ancestor(p, fmt.common_prefix);
-//         let s = format!(
-//             "{:30}\t{}",
-//             apply_color(simple_path, fmt.no_colour, &[RED]),
-//             apply_color(stashes.to_string(), fmt.no_colour, &[GREEN]),
-//         );
-//         Ok(Some(s))
-//     }
-// }
-
 /// Get a list of branches for the given git path
 pub fn branches(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     let stdout = Command::new("git")
@@ -142,108 +74,6 @@ pub fn branches(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         branches
     );
     Ok(Some(s))
-}
-
-// /// Parse git status with robust null-separated porcelain format
-// fn parse_git_status(p: &Path) -> Result<(String, Vec<(String, String)>)> {
-//     let branch_stdout = Command::new("git")
-//         .current_dir(p)
-//         .args(["symbolic-ref", "--short", "HEAD"])
-//         .output()?
-//         .stdout;
-//
-//     let branch = if branch_stdout.is_empty() {
-//         "HEAD".to_string()
-//     } else {
-//         std::str::from_utf8(&branch_stdout)?.trim().to_string()
-//     };
-//
-//     let stdout = Command::new("git")
-//         .current_dir(p)
-//         .args(["status", "--porcelain=v1", "-z"])
-//         .output()?
-//         .stdout;
-//
-//     let mut result = Vec::new();
-//     for entry in stdout.split(|&b| b == 0) {
-//         if entry.is_empty() {
-//             continue;
-//         }
-//         if let Ok(s) = std::str::from_utf8(entry) {
-//             if s.len() > 3 {
-//                 let status = s[..2].to_string();
-//                 let filepath = s[3..].to_string();
-//                 result.push((status, filepath));
-//             }
-//         }
-//     }
-//
-//     Ok((branch, result))
-// }
-
-// /// Get short commit hash for current HEAD
-// fn get_short_commit_hash(p: &Path) -> Result<String> {
-//     let stdout = Command::new("git")
-//         .current_dir(p)
-//         .args(["rev-parse", "--short", "HEAD"])
-//         .output()?
-//         .stdout;
-//     Ok(std::str::from_utf8(&stdout)?.trim().to_string())
-// }
-
-// /// Format the file list from status vector for display
-// fn format_file_list(status_vec: &[(String, String)], fmt: &FormatOpts) -> String {
-//     if status_vec.is_empty() {
-//         return String::new();
-//     }
-//
-//     status_vec
-//         .iter()
-//         .map(|(status, filepath)| {
-//             let formatted_status = apply_color(status.clone(), fmt.no_colour, &[GREEN]);
-//             format!("{} {}", formatted_status, filepath)
-//         })
-//         .collect::<Vec<_>>()
-//         .join("\n")
-// }
-
-fn resolve_default_branch(p: &Path) -> Option<String> {
-    if let Ok(output) = Command::new("git")
-        .current_dir(p)
-        .args(["symbolic-ref", "refs/remotes/origin/HEAD"])
-        .output()
-    {
-        if output.status.success() {
-            let ref_str = std::str::from_utf8(&output.stdout).ok()?.trim().to_string();
-            if let Some(branch) = ref_str.strip_prefix("refs/remotes/") {
-                return Some(branch.to_string());
-            }
-        }
-    }
-    for candidate in &["origin/main", "origin/master"] {
-        if let Ok(output) = Command::new("git")
-            .current_dir(p)
-            .args(["rev-parse", "--verify", candidate])
-            .output()
-        {
-            if output.status.success() {
-                return Some((*candidate).to_string());
-            }
-        }
-    }
-    None
-}
-
-fn ahead_of_default_branch(p: &Path) -> Option<usize> {
-    let default_ref = resolve_default_branch(p)?;
-    let stdout = Command::new("git")
-        .current_dir(p)
-        .args(["rev-list", "--count", &format!("{default_ref}..HEAD")])
-        .output()
-        .ok()?
-        .stdout;
-    let count: usize = std::str::from_utf8(&stdout).ok()?.trim().parse().ok()?;
-    Some(count)
 }
 
 /// Get the status _of each branch_
@@ -299,6 +129,8 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         ));
     }
 
+    let mut jj_part = String::new();
+
     #[cfg(feature = "jj")]
     {
         let jj_mutable = {
@@ -310,18 +142,22 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
             std::str::from_utf8(&stdout)?.lines().count()
         };
         if jj_mutable != 0 {
-            parts.push(apply_color(
+            jj_part = apply_color(
                 format!("{}{SYM_JJ_MUTABLE}", jj_mutable),
                 fmt.no_colour,
-                &[YELLOW],
-            ));
+                &[PURPLE],
+            );
         }
     }
 
-    let joined = parts.join(", ");
-    if joined.is_empty() {
-        return Ok(None);
-    }
+    let joined = match (parts.is_empty(), jj_part.is_empty()) {
+        (true, true) => return Ok(None),
+        (true, false) => jj_part,
+        (false, true) => parts.join(", "),
+        (false, false) => {
+            [parts.join(", "), jj_part].join(&apply_color(" · ", fmt.no_colour, &[BOLD, BLACK]))
+        }
+    };
 
     let path = remove_common_ancestor(p, fmt.common_prefix);
     let s = format!(
