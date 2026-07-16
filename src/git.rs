@@ -99,6 +99,8 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
 
     let mut n_modified = 0;
     let mut n_untracked = 0;
+    let mut n_added = 0;
+    let mut n_deleted = 0;
     for line in response {
         let trimmed = line.trim_start().to_string();
         let trimmed = if trimmed.starts_with('\u{1b}') {
@@ -106,12 +108,29 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         } else {
             trimmed
         };
-        if trimmed.starts_with("M") {
-            n_modified += 1;
+        match trimmed.chars().next() {
+            Some('M') => n_modified += 1,
+            Some('?') => n_untracked += 1,
+            Some('A') => n_added += 1,
+            Some('D') => n_deleted += 1,
+            _ => unreachable!("Should not be possible to reach here"),
         }
-        if trimmed.starts_with("?") {
-            n_untracked += 1;
-        }
+    }
+
+    if n_added > 0 {
+        parts.push(apply_color(
+            format!("{}+", n_added),
+            fmt.no_colour,
+            &[GREEN],
+        ));
+    }
+
+    if n_deleted > 0 {
+        parts.push(apply_color(
+            format!("{}-", n_deleted),
+            fmt.no_colour,
+            &[RED],
+        ));
     }
 
     if n_modified > 0 {
@@ -121,6 +140,7 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
             &[GREEN],
         ));
     }
+
     if n_untracked > 0 {
         parts.push(apply_color(
             format!("{}?", n_untracked),
@@ -128,8 +148,6 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
             &[YELLOW],
         ));
     }
-
-    let mut jj_part = String::new();
 
     #[cfg(feature = "jj")]
     {
@@ -142,22 +160,18 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
             std::str::from_utf8(&stdout)?.lines().count()
         };
         if jj_mutable != 0 {
-            jj_part = apply_color(
+            parts.push(apply_color(
                 format!("{}{SYM_JJ_MUTABLE}", jj_mutable),
                 fmt.no_colour,
                 &[PURPLE],
-            );
+            ));
         }
     }
 
-    let joined = match (parts.is_empty(), jj_part.is_empty()) {
-        (true, true) => return Ok(None),
-        (true, false) => jj_part,
-        (false, true) => parts.join(", "),
-        (false, false) => {
-            [parts.join(", "), jj_part].join(&apply_color(" · ", fmt.no_colour, &[BOLD, BLACK]))
-        }
-    };
+    if parts.is_empty() {
+        return Ok(None);
+    }
+    let joined = parts.join(&apply_color(" · ", fmt.no_colour, &[BOLD, BLACK]));
 
     let path = remove_common_ancestor(p, fmt.common_prefix);
     let s = format!(
