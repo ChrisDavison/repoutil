@@ -53,8 +53,7 @@ pub fn homedir(s: &str) -> Result<PathBuf> {
         }
         Ok(home)
     } else {
-        home.push(s);
-        Ok(home)
+        Ok(home.join(s))
     }
 }
 
