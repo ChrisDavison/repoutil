@@ -132,10 +132,7 @@ pub fn get_repos_from_dir(dir: &Path) -> Result<Vec<PathBuf>> {
 
 pub fn get_repos_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
     let (inc, exc) = get_dirs_from_config()?;
-    let excludes: Vec<_> = exc
-        .into_iter()
-        .filter(|dir| git::is_repo(dir))
-        .collect();
+    let excludes: Vec<_> = exc.into_iter().filter(|dir| git::is_repo(dir)).collect();
 
     let mut includes = Vec::with_capacity(inc.len());
     for dir in inc {
