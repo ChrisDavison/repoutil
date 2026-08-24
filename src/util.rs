@@ -97,6 +97,7 @@ pub fn get_dirs_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
 
     let mut includes = Vec::new();
     let mut excludes = Vec::new();
+    let mut exclude_set: std::collections::HashSet<PathBuf> = std::collections::HashSet::new();
     for line in std::fs::read_to_string(p)?.lines() {
         let line = line.trim();
         if line.is_empty() || line.starts_with('#') {
@@ -105,10 +106,12 @@ pub fn get_dirs_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
         if let Some(stripped) = line.strip_prefix('!') {
             let path = homedir(stripped)?;
             // Strip 'exclusion-marking' ! from start of path, and add to excludes list
+            exclude_set.insert(path.clone());
             excludes.push(path);
         } else {
             let path = homedir(line)?;
-            if !excludes.contains(&path) {
+            // Only skip if the exclude appeared earlier in the config
+            if !exclude_set.contains(&path) {
                 includes.push(path);
             }
         }
@@ -130,9 +133,8 @@ pub fn get_repos_from_dir(dir: &Path) -> Result<Vec<PathBuf>> {
 pub fn get_repos_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
     let (inc, exc) = get_dirs_from_config()?;
     let excludes: Vec<_> = exc
-        .iter()
+        .into_iter()
         .filter(|dir| git::is_repo(dir))
-        .cloned()
         .collect();
 
     let mut includes = Vec::with_capacity(inc.len());
@@ -140,7 +142,7 @@ pub fn get_repos_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
         if git::is_repo(&dir) {
             includes.push(dir);
         } else if let Ok(repos) = get_repos_from_dir(&dir) {
-            includes.extend(repos.iter().map(|p| p.to_path_buf()));
+            includes.extend(repos);
         }
     }
     includes.sort();
