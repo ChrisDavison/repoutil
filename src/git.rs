@@ -102,18 +102,18 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     let mut n_added = 0;
     let mut n_deleted = 0;
     for line in response {
-        let trimmed = line.trim_start().to_string();
-        let trimmed = if trimmed.starts_with('\u{1b}') {
-            trimmed[5..6].to_string()
+        let trimmed = line.trim_start();
+        let status_char = if trimmed.starts_with('\u{1b}') {
+            trimmed.chars().nth(5)
         } else {
-            trimmed
+            trimmed.chars().next()
         };
-        match trimmed.chars().next() {
+        match status_char {
             Some('M') => n_modified += 1,
             Some('?') => n_untracked += 1,
             Some('A') => n_added += 1,
             Some('D') => n_deleted += 1,
-            _ => unreachable!("Should not be possible to reach here"),
+            _ => {}
         }
     }
 
