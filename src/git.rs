@@ -60,14 +60,12 @@ pub fn branches(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         .args(["branch"])
         .output()?
         .stdout;
-    let mut branches: Vec<&str> = std::str::from_utf8(&stdout)?.lines().collect();
-    branches.sort();
-    branches.reverse();
-    let branches: String = branches
-        .iter()
-        .map(|x| x.trim().to_string())
-        .collect::<Vec<_>>()
-        .join(", ");
+    let mut branches: Vec<&str> = std::str::from_utf8(&stdout)?
+        .lines()
+        .map(str::trim)
+        .collect();
+    branches.sort_unstable_by(|a, b| b.cmp(a));
+    let branches = branches.join(", ");
     let s = format!(
         "{:30}\t{}",
         remove_common_ancestor(p, fmt.common_prefix),
