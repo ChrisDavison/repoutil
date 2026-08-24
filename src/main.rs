@@ -102,8 +102,13 @@ fn main() {
 
     let outs: Vec<_> = repos
         .par_iter()
-        .filter_map(|repo| cmd(repo, &fmt).ok())
-        .flatten()
+        .filter_map(|repo| match cmd(repo, &fmt) {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("ERR {}: {}", repo.display(), e);
+                None
+            }
+        })
         .collect();
 
     for line in outs {
