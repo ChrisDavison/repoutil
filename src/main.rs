@@ -103,8 +103,10 @@ fn main() {
     let outs: Vec<_> = repos
         .par_iter()
         .filter_map(|repo| cmd(repo, &fmt).ok())
-        .filter_map(|r| r)
+        .flatten()
         .collect();
 
-    println!("{}", outs.join("\n"));
+    for line in outs {
+        println!("{line}");
+    }
 }
