@@ -90,8 +90,14 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         let start = response.find('[').unwrap();
         let end = response.find(']').unwrap();
         let s = response[start + 1..end]
-            .replace("ahead ", SYM_AHEAD)
-            .replace("behind ", SYM_BEHIND);
+            .split(", ")
+            .map(|part| match part.split_once(' ') {
+                Some(("ahead", n)) => format!("{SYM_AHEAD}{n}"),
+                Some(("behind", n)) => format!("{SYM_BEHIND}{n}"),
+                _ => part.to_string(),
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
         parts.push(apply_color(s, fmt.no_colour, &[BLUE]));
     }
 
@@ -169,7 +175,7 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     if parts.is_empty() {
         return Ok(None);
     }
-    let joined = parts.join(&apply_color(" · ", fmt.no_colour, &[BOLD, BLACK]));
+    let joined = parts.join(fmt.separator);
 
     let path = remove_common_ancestor(p, fmt.common_prefix);
     let s = format!(

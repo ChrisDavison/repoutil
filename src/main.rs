@@ -1,7 +1,8 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use rayon::prelude::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
+use crate::ansi_escape::{apply_color, BLACK, BOLD};
 mod ansi_escape;
 mod git;
 mod util;
@@ -52,8 +53,9 @@ enum ColorChoice {
 
 #[derive(Clone)]
 struct FormatOpts<'a> {
-    common_prefix: Option<&'a PathBuf>,
+    common_prefix: Option<&'a Path>,
     no_colour: bool,
+    separator: &'a str,
 }
 
 fn main() {
@@ -80,9 +82,16 @@ fn main() {
         ColorChoice::Auto => !ansi_escape::should_color_stdout(),
     } || args.no_colour;
 
+    let separator = apply_color(" · ", computed_no_colour, &[BOLD, BLACK]);
+
     let fmt = FormatOpts {
-        common_prefix: if args.keep_home { None } else { Some(&common) },
+        common_prefix: if args.keep_home {
+            None
+        } else {
+            Some(common.as_path())
+        },
         no_colour: computed_no_colour,
+        separator: &separator,
     };
 
     let cmd = match args.command.unwrap_or(Command::Branchstat) {

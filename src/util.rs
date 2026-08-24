@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use crate::git;
 // use serde_json::json;
 
-pub fn remove_common_ancestor(repo: &Path, common: Option<&PathBuf>) -> String {
+pub fn remove_common_ancestor(repo: &Path, common: Option<&Path>) -> String {
     if let Some(prefix) = common {
         repo.strip_prefix(prefix).unwrap().display().to_string()
     } else {
@@ -40,7 +40,7 @@ pub fn remove_common_ancestor(repo: &Path, common: Option<&PathBuf>) -> String {
 //     obj.to_string()
 // }
 
-pub fn path_output(p: &Path, common_prefix: Option<&PathBuf>) -> String {
+pub fn path_output(p: &Path, common_prefix: Option<&Path>) -> String {
     remove_common_ancestor(p, common_prefix)
 }
 
