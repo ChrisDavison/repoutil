@@ -45,7 +45,7 @@ pub fn is_repo(p: &Path) -> bool {
 pub fn fetch(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     let status = Command::new("git")
         .current_dir(p)
-        .args(["fetch", "--all", "--tags", "--quiet"])
+        .args(["fetch", "--all", "--quiet"])
         .status()?;
     if !status.success() {
         return Err(anyhow!("git fetch failed for {}", p.display()));
