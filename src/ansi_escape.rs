@@ -11,7 +11,8 @@ pub const PURPLE: &str = "\x1b[35m";
 pub const ANSI_RESET: &str = "\x1b[0m";
 
 pub fn should_color_stdout() -> bool {
-    anstream::stdout().is_terminal() && std::env::var_os("NO_COLOR").is_none()
+    anstream::stdout().is_terminal()
+        && std::env::var_os("NO_COLOR").is_none_or(|v| v.is_empty())
 }
 
 pub fn colour(text: impl Into<String> + std::fmt::Display, colours: &[&str]) -> String {
