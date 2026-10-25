@@ -1,11 +1,10 @@
-use crate::FormatOpts;
+use crate::{FormatOpts, Row};
 
 use anyhow::{anyhow, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::ansi_escape::*;
-use crate::util::remove_common_ancestor;
 
 const SYM_AHEAD: &str = "↑";
 const SYM_BEHIND: &str = "↓";
@@ -34,8 +33,8 @@ pub fn toplevel(p: &Path) -> Result<PathBuf> {
 }
 
 /// List each repo found
-pub fn list(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
-    Ok(Some(remove_common_ancestor(p, fmt.common_prefix)))
+pub fn list(_: &Path, _: &FormatOpts) -> Result<Option<Row>> {
+    Ok(Some(Row::default()))
 }
 
 pub fn is_repo(p: &Path) -> bool {
@@ -43,13 +42,13 @@ pub fn is_repo(p: &Path) -> bool {
 }
 
 /// Fetch all branches of a git repo
-pub fn fetch(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
+pub fn fetch(p: &Path, fmt: &FormatOpts) -> Result<Option<Row>> {
     git(p, &["fetch", "--all", "--quiet"])?;
     branchstat(p, fmt)
 }
 
 /// Get a list of branches for the given git path
-pub fn branches(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
+pub fn branches(p: &Path, _: &FormatOpts) -> Result<Option<Row>> {
     // Mark the current branch with `*` and those checked out elsewhere with `+`,
     // as plain `git branch` does, while keeping its (configurable) sort order
     let stdout = git(
@@ -60,12 +59,10 @@ pub fn branches(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         ],
     )?;
     let branches = stdout.lines().collect::<Vec<_>>().join(" // ");
-    let s = format!(
-        "{:30}\t{}",
-        remove_common_ancestor(p, fmt.common_prefix),
-        branches
-    );
-    Ok(Some(s))
+    Ok(Some(Row {
+        detail: branches,
+        ..Row::default()
+    }))
 }
 
 /// Summary of `git status --porcelain=v2 --branch`
@@ -129,7 +126,7 @@ impl RepoStatus {
 }
 
 /// Get the status _of each branch_
-pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
+pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<Row>> {
     let status = RepoStatus::parse(&git(p, &["status", "--porcelain=v2", "--branch"])?);
 
     let mut parts = Vec::new();
@@ -168,20 +165,12 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     if parts.is_empty() {
         return Ok(None);
     }
-    let joined = parts.join(fmt.separator);
-
-    let path = remove_common_ancestor(p, fmt.common_prefix);
-    let mut width = path.chars().count();
-    let mut header = fmt.paint(path, &[BOLD, RED]);
-    let branch = status.branch.as_deref().unwrap_or("HEAD");
-    if !matches!(branch, "main" | "master") {
-        let suffix = format!(" on {branch}");
-        width += suffix.chars().count();
-        header.push_str(&fmt.paint(suffix, &[FAINT, BLUE]));
-    }
-    // Pad by visible width, as the colour codes would otherwise count towards it
-    let padding = " ".repeat(40usize.saturating_sub(width));
-    Ok(Some(format!("{header}{padding} {joined}")))
+    let branch = status.branch.unwrap_or_else(|| "HEAD".to_string());
+    Ok(Some(Row {
+        path_style: &[BOLD, RED],
+        note: (!matches!(branch.as_str(), "main" | "master")).then(|| format!("on {branch}")),
+        detail: parts.join(fmt.separator),
+    }))
 }
 
 /// Number of non-empty mutable jj commits, or `None` if this isn't a jj repo
