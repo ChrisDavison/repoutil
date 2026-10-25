@@ -63,16 +63,19 @@ impl FormatOpts<'_> {
     }
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
-    let repos = match config::get_repos_from_config() {
-        Err(err) => {
-            eprintln!("ERR `{}`", err);
-            std::process::exit(1);
-        }
-        Ok(repos) => repos,
+    let cmd = match args.command.unwrap_or(Command::Branchstat) {
+        // Runs before reading the config, as it may create it
+        Command::Add => return config::add(),
+        Command::List => git::list,
+        Command::Fetch => git::fetch,
+        Command::Branchstat => git::branchstat,
+        Command::Branches => git::branches,
     };
+
+    let repos = config::get_repos_from_config()?;
     let common = if args.keep_home {
         PathBuf::new()
     } else {
@@ -97,21 +100,6 @@ fn main() {
         separator: &separator,
     };
 
-    let cmd = match args.command.unwrap_or(Command::Branchstat) {
-        // Works with any directory
-        Command::Add => {
-            if let Err(e) = config::add() {
-                println!("{}", e);
-                std::process::exit(1);
-            }
-            return;
-        }
-        Command::List => git::list,
-        Command::Fetch => git::fetch,
-        Command::Branchstat => git::branchstat,
-        Command::Branches => git::branches,
-    };
-
     let outs: Vec<_> = repos
         .par_iter()
         .filter_map(|repo| match cmd(repo, &fmt) {
@@ -126,4 +114,5 @@ fn main() {
     for line in outs {
         println!("{line}");
     }
+    Ok(())
 }
