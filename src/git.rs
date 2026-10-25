@@ -155,16 +155,8 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     }
 
     #[cfg(feature = "jj")]
-    {
-        let stdout = Command::new("jj")
-            .current_dir(p)
-            .args(["list_mut"])
-            .output()?
-            .stdout;
-        let jj_mutable = std::str::from_utf8(&stdout)?.lines().count();
-        if jj_mutable != 0 {
-            parts.push(fmt.paint(format!("{jj_mutable}{SYM_JJ_MUTABLE}"), &[PURPLE]));
-        }
+    if let Some(n) = jj_mutable_count(p).filter(|&n| n > 0) {
+        parts.push(fmt.paint(format!("{n}{SYM_JJ_MUTABLE}"), &[PURPLE]));
     }
 
     if parts.is_empty() {
@@ -184,6 +176,29 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     // Pad by visible width, as the colour codes would otherwise count towards it
     let padding = " ".repeat(40usize.saturating_sub(width));
     Ok(Some(format!("{header}{padding} {joined}")))
+}
+
+/// Number of non-empty mutable jj commits, or `None` if this isn't a jj repo
+/// or jj can't be run
+#[cfg(feature = "jj")]
+fn jj_mutable_count(p: &Path) -> Option<usize> {
+    if !p.join(".jj").exists() {
+        return None;
+    }
+    let output = Command::new("jj")
+        .current_dir(p)
+        .args([
+            "log",
+            "-r",
+            "mutable()::",
+            "--no-graph",
+            "-T",
+            r#"if(!empty, "x\n")"#,
+        ])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())?;
+    Some(String::from_utf8_lossy(&output.stdout).lines().count())
 }
 
 #[cfg(test)]
