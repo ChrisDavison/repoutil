@@ -58,6 +58,13 @@ struct FormatOpts<'a> {
     separator: &'a str,
 }
 
+impl FormatOpts<'_> {
+    /// Wrap `text` in the given ANSI codes, unless colour is disabled
+    fn paint(&self, text: impl Into<String>, codes: &[&str]) -> String {
+        apply_color(text, self.no_colour, codes)
+    }
+}
+
 fn main() {
     let args = Cli::parse();
 
