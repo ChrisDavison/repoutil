@@ -40,6 +40,7 @@ pub fn add() -> Result<()> {
     }
 }
 
+/// Read the include and exclude (`!`-prefixed) paths from ~/.repoutilrc
 fn get_dirs_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
     let p = config_path()?;
 
@@ -49,23 +50,15 @@ fn get_dirs_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
 
     let mut includes = Vec::new();
     let mut excludes = Vec::new();
-    let mut exclude_set: std::collections::HashSet<PathBuf> = std::collections::HashSet::new();
     for line in std::fs::read_to_string(p)?.lines() {
         let line = line.trim();
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
         if let Some(stripped) = line.strip_prefix('!') {
-            let path = expand_home(stripped)?;
-            // Strip 'exclusion-marking' ! from start of path, and add to excludes list
-            exclude_set.insert(path.clone());
-            excludes.push(path);
+            excludes.push(expand_home(stripped)?);
         } else {
-            let path = expand_home(line)?;
-            // Only skip if the exclude appeared earlier in the config
-            if !exclude_set.contains(&path) {
-                includes.push(path);
-            }
+            includes.push(expand_home(line)?);
         }
     }
     Ok((includes, excludes))
@@ -82,21 +75,20 @@ fn get_repos_from_dir(dir: &Path) -> Result<Vec<PathBuf>> {
     Ok(repos)
 }
 
+/// Every repo in ~/.repoutilrc, skipping any that are at or under an excluded path
 pub fn get_repos_from_config() -> Result<Vec<PathBuf>> {
-    let (inc, exc) = get_dirs_from_config()?;
-    let excludes: Vec<_> = exc.into_iter().filter(|dir| git::is_repo(dir)).collect();
+    let (dirs, excludes) = get_dirs_from_config()?;
 
-    let mut includes = Vec::with_capacity(inc.len());
-    for dir in inc {
+    let mut repos = Vec::with_capacity(dirs.len());
+    for dir in dirs {
         if git::is_repo(&dir) {
-            includes.push(dir);
-        } else if let Ok(repos) = get_repos_from_dir(&dir) {
-            includes.extend(repos);
+            repos.push(dir);
+        } else if let Ok(found) = get_repos_from_dir(&dir) {
+            repos.extend(found);
         }
     }
-    includes.sort();
-    includes.dedup();
-    let exclude_set: std::collections::HashSet<_> = excludes.iter().collect();
-    includes.retain(|x| !exclude_set.contains(x));
-    Ok(includes)
+    repos.retain(|repo| !excludes.iter().any(|exc| repo.starts_with(exc)));
+    repos.sort();
+    repos.dedup();
+    Ok(repos)
 }

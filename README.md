@@ -31,4 +31,4 @@ For each configured repo, show ahead/behind against its upstream plus counts of 
 
 ## Configuration
 
-Populate `~/.repoutilrc` with lines containing either repo paths or directories to scan for repos. Lines starting with `!` are exclusions; blank lines and `#` comments are ignored. `~` is expanded at the start of the path.
+Populate `~/.repoutilrc` with lines containing either repo paths or directories to scan for repos. Lines starting with `!` are exclusions, hiding any repo at or under that path; blank lines and `#` comments are ignored. `~` is expanded at the start of the path.
