@@ -178,10 +178,31 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
     let joined = parts.join(fmt.separator);
 
     let path = remove_common_ancestor(p, fmt.common_prefix);
-    let s = format!(
-        "{:40} {}",
-        apply_color(path, fmt.no_colour, &[BOLD, RED]),
-        joined
-    );
-    Ok(Some(s))
+    let mut width = path.chars().count();
+    let mut header = apply_color(path, fmt.no_colour, &[BOLD, RED]);
+    if let Some(branch) = branch_line
+        .and_then(branch_name)
+        .filter(|b| !matches!(*b, "main" | "master"))
+    {
+        let suffix = format!(" on {branch}");
+        width += suffix.chars().count();
+        header.push_str(&apply_color(suffix, fmt.no_colour, &[FAINT, BLUE]));
+    }
+    // Pad by visible width, as the colour codes would otherwise count towards it
+    let padding = " ".repeat(40usize.saturating_sub(width));
+    Ok(Some(format!("{header}{padding} {joined}")))
+}
+
+/// Extract the branch name from the `## ...` header of `git status --porcelain -b`
+fn branch_name(line: &str) -> Option<&str> {
+    let rest = line.strip_prefix("## ")?;
+    let rest = rest.strip_prefix("No commits yet on ").unwrap_or(rest);
+    if rest.starts_with("HEAD (no branch)") {
+        return Some("HEAD");
+    }
+    let end = rest
+        .find("...")
+        .or_else(|| rest.find(" ["))
+        .unwrap_or(rest.len());
+    Some(&rest[..end])
 }

@@ -22,7 +22,7 @@ Visit each configured repo in parallel, fetching remote changes for all remotes,
 
 ## `branchstat`
 
-For each configured repo, show ahead/behind against its upstream plus counts of added, deleted, modified, and untracked files. Repos with nothing to report are hidden.
+For each configured repo, show ahead/behind against its upstream plus counts of added, deleted, modified, and untracked files. The current branch is shown after the path when it is not `main` or `master`. Repos with nothing to report are hidden.
 
 ## Options
 

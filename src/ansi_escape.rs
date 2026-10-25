@@ -1,4 +1,5 @@
 pub const BOLD: &str = "\x1b[1m";
+pub const FAINT: &str = "\x1b[2m";
 
 pub const BLACK: &str = "\x1b[90m";
 pub const RED: &str = "\x1b[31m";
