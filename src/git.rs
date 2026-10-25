@@ -50,10 +50,16 @@ pub fn fetch(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
 
 /// Get a list of branches for the given git path
 pub fn branches(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
-    let stdout = git(p, &["branch"])?;
-    let mut branches: Vec<&str> = stdout.lines().map(str::trim).collect();
-    branches.sort_unstable_by(|a, b| b.cmp(a));
-    let branches = branches.join(" // ");
+    // Mark the current branch with `*` and those checked out elsewhere with `+`,
+    // as plain `git branch` does, while keeping its (configurable) sort order
+    let stdout = git(
+        p,
+        &[
+            "branch",
+            "--format=%(if)%(HEAD)%(then)* %(else)%(if)%(worktreepath)%(then)+ %(end)%(end)%(refname:short)",
+        ],
+    )?;
+    let branches = stdout.lines().collect::<Vec<_>>().join(" // ");
     let s = format!(
         "{:30}\t{}",
         remove_common_ancestor(p, fmt.common_prefix),
