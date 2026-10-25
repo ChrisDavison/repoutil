@@ -14,8 +14,6 @@ mod util;
 struct Cli {
     #[command(subcommand)]
     command: Option<Command>,
-    #[arg(short, long, hide = true)]
-    no_colour: bool,
     /// Colorize output: auto (default), always, or never
     #[arg(long, value_enum, default_value_t = ColorChoice::Auto)]
     color: ColorChoice,
@@ -54,14 +52,13 @@ enum ColorChoice {
 #[derive(Clone)]
 struct FormatOpts<'a> {
     common_prefix: Option<&'a Path>,
-    no_colour: bool,
+    no_color: bool,
     separator: &'a str,
 }
 
 impl FormatOpts<'_> {
-    /// Wrap `text` in the given ANSI codes, unless colour is disabled
     fn paint(&self, text: impl Into<String>, codes: &[&str]) -> String {
-        apply_color(text, self.no_colour, codes)
+        apply_color(text, self.no_color, codes)
     }
 }
 
@@ -81,13 +78,13 @@ fn main() {
         util::common_ancestor(&repos)
     };
 
-    let computed_no_colour = match args.color {
+    let no_color = match args.color {
         ColorChoice::Always => false,
         ColorChoice::Never => true,
         ColorChoice::Auto => !ansi_escape::should_color_stdout(),
-    } || args.no_colour;
+    };
 
-    let separator = apply_color(" · ", computed_no_colour, &[BOLD, BLACK]);
+    let separator = apply_color(" · ", no_color, &[BOLD, BLACK]);
 
     let fmt = FormatOpts {
         common_prefix: if args.keep_home {
@@ -95,7 +92,7 @@ fn main() {
         } else {
             Some(common.as_path())
         },
-        no_colour: computed_no_colour,
+        no_color,
         separator: &separator,
     };
 

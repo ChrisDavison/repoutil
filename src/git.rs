@@ -158,9 +158,9 @@ pub fn branchstat(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
         (status.modified, SYM_MODIFIED, GREEN),
         (status.untracked, "?", YELLOW),
     ];
-    for (n, sym, colour) in counts {
+    for (n, sym, color) in counts {
         if n > 0 {
-            parts.push(fmt.paint(format!("{n}{sym}"), &[colour]));
+            parts.push(fmt.paint(format!("{n}{sym}"), &[color]));
         }
     }
 
