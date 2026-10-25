@@ -68,15 +68,13 @@ impl FormatOpts<'_> {
 fn main() {
     let args = Cli::parse();
 
-    let (includes, _excludes) = match util::get_repos_from_config() {
+    let repos = match util::get_repos_from_config() {
         Err(err) => {
             eprintln!("ERR `{}`", err);
             std::process::exit(1);
         }
-        Ok((i, e)) => (i, e),
+        Ok(repos) => repos,
     };
-
-    let repos = includes;
     let common = if args.keep_home {
         PathBuf::new()
     } else {

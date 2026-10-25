@@ -3,45 +3,16 @@ use std::fs::read_dir;
 use std::path::{Path, PathBuf};
 
 use crate::git;
-// use serde_json::json;
 
 pub fn remove_common_ancestor(repo: &Path, common: Option<&Path>) -> String {
     if let Some(prefix) = common {
-        repo.strip_prefix(prefix).unwrap().display().to_string()
+        repo.strip_prefix(prefix)
+            .unwrap_or(repo)
+            .display()
+            .to_string()
     } else {
         repo.display().to_string()
     }
-}
-
-// pub fn format_json(
-//     title: &Path,
-//     subtitle: Option<&str>,
-//     path_as_arg: bool,
-//     common: Option<&PathBuf>,
-// ) -> String {
-//     let arg = if path_as_arg {
-//         title.display().to_string()
-//     } else {
-//         String::new()
-//     };
-//     let title = remove_common_ancestor(title, common);
-//     let obj = if let Some(sub) = subtitle {
-//         json!({
-//             "title": title,
-//             "arg": arg,
-//             "subtitle": sub,
-//         })
-//     } else {
-//         json!({
-//             "title": title,
-//             "arg": arg,
-//         })
-//     };
-//     obj.to_string()
-// }
-
-pub fn path_output(p: &Path, common_prefix: Option<&Path>) -> String {
-    remove_common_ancestor(p, common_prefix)
 }
 
 pub fn homedir(s: &str) -> Result<PathBuf> {
@@ -130,7 +101,7 @@ pub fn get_repos_from_dir(dir: &Path) -> Result<Vec<PathBuf>> {
     Ok(repos)
 }
 
-pub fn get_repos_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
+pub fn get_repos_from_config() -> Result<Vec<PathBuf>> {
     let (inc, exc) = get_dirs_from_config()?;
     let excludes: Vec<_> = exc.into_iter().filter(|dir| git::is_repo(dir)).collect();
 
@@ -145,11 +116,8 @@ pub fn get_repos_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
     includes.sort();
     includes.dedup();
     let exclude_set: std::collections::HashSet<_> = excludes.iter().collect();
-    let includes = includes
-        .into_iter()
-        .filter(|x| !exclude_set.contains(x))
-        .collect();
-    Ok((includes, excludes))
+    includes.retain(|x| !exclude_set.contains(x));
+    Ok(includes)
 }
 
 #[cfg(test)]

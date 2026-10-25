@@ -6,7 +6,7 @@ use std::path::Path;
 use std::process::Command;
 
 use crate::ansi_escape::*;
-use crate::util::{path_output, remove_common_ancestor};
+use crate::util::remove_common_ancestor;
 
 const SYM_AHEAD: &str = "↑";
 const SYM_BEHIND: &str = "↓";
@@ -45,7 +45,7 @@ pub fn add() -> Result<()> {
 
 /// List each repo found
 pub fn list(p: &Path, fmt: &FormatOpts) -> Result<Option<String>> {
-    Ok(Some(path_output(p, fmt.common_prefix)))
+    Ok(Some(remove_common_ancestor(p, fmt.common_prefix)))
 }
 
 pub fn is_repo(p: &Path) -> bool {
