@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::ansi_escape::{apply_color, BLACK, BOLD};
 mod ansi_escape;
+mod config;
 mod git;
 mod util;
 
@@ -65,7 +66,7 @@ impl FormatOpts<'_> {
 fn main() {
     let args = Cli::parse();
 
-    let repos = match util::get_repos_from_config() {
+    let repos = match config::get_repos_from_config() {
         Err(err) => {
             eprintln!("ERR `{}`", err);
             std::process::exit(1);
@@ -99,7 +100,7 @@ fn main() {
     let cmd = match args.command.unwrap_or(Command::Branchstat) {
         // Works with any directory
         Command::Add => {
-            if let Err(e) = git::add() {
+            if let Err(e) = config::add() {
                 println!("{}", e);
                 std::process::exit(1);
             }

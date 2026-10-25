@@ -1,7 +1,6 @@
 use crate::FormatOpts;
 
 use anyhow::{anyhow, Result};
-use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 
@@ -25,22 +24,6 @@ fn git(p: &Path, args: &[&str]) -> Result<String> {
         ));
     }
     Ok(String::from_utf8(output.stdout)?)
-}
-
-pub fn add() -> Result<()> {
-    let config_filename = crate::util::homedir(".repoutilrc")?;
-    let curdir = std::env::current_dir()?;
-    if is_repo(&curdir) {
-        let mut file = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(config_filename)?;
-
-        writeln!(file, "{}", curdir.to_string_lossy())?;
-        Ok(())
-    } else {
-        Err(anyhow!("Don't appear to be in the root of a git repo."))
-    }
 }
 
 /// List each repo found

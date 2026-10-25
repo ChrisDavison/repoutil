@@ -1,8 +1,4 @@
-use anyhow::{anyhow, Result};
-use std::fs::read_dir;
 use std::path::{Path, PathBuf};
-
-use crate::git;
 
 pub fn remove_common_ancestor(repo: &Path, common: Option<&Path>) -> String {
     if let Some(prefix) = common {
@@ -12,19 +8,6 @@ pub fn remove_common_ancestor(repo: &Path, common: Option<&Path>) -> String {
             .to_string()
     } else {
         repo.display().to_string()
-    }
-}
-
-pub fn homedir(s: &str) -> Result<PathBuf> {
-    let mut home = PathBuf::from(std::env::var("HOME")?);
-    if let Some(rest) = s.strip_prefix("~/") {
-        let p = PathBuf::from(rest);
-        for cmp in p.components() {
-            home.push(cmp);
-        }
-        Ok(home)
-    } else {
-        Ok(home.join(s))
     }
 }
 
@@ -56,68 +39,6 @@ pub fn common_ancestor(ss: &[PathBuf]) -> PathBuf {
         }
     }
     prefix.iter().collect()
-}
-
-pub fn get_dirs_from_config() -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
-    let p = homedir(".repoutilrc")?;
-    // let p = std::path::Path::new(&repoutil_config);
-
-    if !p.exists() {
-        return Err(anyhow!("No ~/.repoutilrc"));
-    }
-
-    let mut includes = Vec::new();
-    let mut excludes = Vec::new();
-    let mut exclude_set: std::collections::HashSet<PathBuf> = std::collections::HashSet::new();
-    for line in std::fs::read_to_string(p)?.lines() {
-        let line = line.trim();
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        if let Some(stripped) = line.strip_prefix('!') {
-            let path = homedir(stripped)?;
-            // Strip 'exclusion-marking' ! from start of path, and add to excludes list
-            exclude_set.insert(path.clone());
-            excludes.push(path);
-        } else {
-            let path = homedir(line)?;
-            // Only skip if the exclude appeared earlier in the config
-            if !exclude_set.contains(&path) {
-                includes.push(path);
-            }
-        }
-    }
-    Ok((includes, excludes))
-}
-
-// Get every repo from subdirs of `dir`
-pub fn get_repos_from_dir(dir: &Path) -> Result<Vec<PathBuf>> {
-    let mut repos: Vec<PathBuf> = read_dir(dir)?
-        .filter_map(|d| d.ok())
-        .map(|d| d.path())
-        .filter(|d| git::is_repo(d))
-        .collect();
-    repos.sort();
-    Ok(repos)
-}
-
-pub fn get_repos_from_config() -> Result<Vec<PathBuf>> {
-    let (inc, exc) = get_dirs_from_config()?;
-    let excludes: Vec<_> = exc.into_iter().filter(|dir| git::is_repo(dir)).collect();
-
-    let mut includes = Vec::with_capacity(inc.len());
-    for dir in inc {
-        if git::is_repo(&dir) {
-            includes.push(dir);
-        } else if let Ok(repos) = get_repos_from_dir(&dir) {
-            includes.extend(repos);
-        }
-    }
-    includes.sort();
-    includes.dedup();
-    let exclude_set: std::collections::HashSet<_> = excludes.iter().collect();
-    includes.retain(|x| !exclude_set.contains(x));
-    Ok(includes)
 }
 
 #[cfg(test)]
