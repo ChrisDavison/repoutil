@@ -1,7 +1,7 @@
 use crate::FormatOpts;
 
 use anyhow::{anyhow, Result};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::ansi_escape::*;
@@ -24,6 +24,13 @@ fn git(p: &Path, args: &[&str]) -> Result<String> {
         ));
     }
     Ok(String::from_utf8(output.stdout)?)
+}
+
+/// Root directory of the repo containing `p`
+pub fn toplevel(p: &Path) -> Result<PathBuf> {
+    Ok(PathBuf::from(
+        git(p, &["rev-parse", "--show-toplevel"])?.trim(),
+    ))
 }
 
 /// List each repo found

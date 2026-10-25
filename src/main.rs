@@ -24,7 +24,7 @@ struct Cli {
 
 #[derive(Debug, Subcommand, PartialEq)]
 enum Command {
-    /// Add the current directory to ~/.repoutilrc
+    /// Add the repo containing the current directory to ~/.repoutilrc
     #[command(aliases = &["a"])]
     Add,
     /// List directories (or glob matches) that will be tracked from ~/.repoutilrc

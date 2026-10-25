@@ -23,21 +23,26 @@ fn config_path() -> Result<PathBuf> {
     expand_home(".repoutilrc")
 }
 
-/// Add the current directory to ~/.repoutilrc
+/// Add the repo containing the current directory to ~/.repoutilrc
 pub fn add() -> Result<()> {
     let config_filename = config_path()?;
-    let curdir = std::env::current_dir()?;
-    if git::is_repo(&curdir) {
-        let mut file = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(config_filename)?;
+    let repo = git::toplevel(&std::env::current_dir()?)
+        .map_err(|_| anyhow!("Don't appear to be in a git repo."))?;
 
-        writeln!(file, "{}", curdir.to_string_lossy())?;
-        Ok(())
-    } else {
-        Err(anyhow!("Don't appear to be in the root of a git repo."))
+    if config_filename.exists() {
+        let (includes, _) = get_dirs_from_config()?;
+        if includes.contains(&repo) {
+            println!("{} is already in ~/.repoutilrc", repo.display());
+            return Ok(());
+        }
     }
+
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(config_filename)?;
+    writeln!(file, "{}", repo.display())?;
+    Ok(())
 }
 
 /// Read the include and exclude (`!`-prefixed) paths from ~/.repoutilrc
