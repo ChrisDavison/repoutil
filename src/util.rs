@@ -11,34 +11,24 @@ pub fn remove_common_ancestor(repo: &Path, common: Option<&Path>) -> String {
     }
 }
 
-pub fn common_ancestor(ss: &[PathBuf]) -> PathBuf {
-    if ss.is_empty() || ss.len() == 1 {
+/// Longest path containing every repo. A single repo uses its parent, so its
+/// own name stays visible.
+pub fn common_ancestor(paths: &[PathBuf]) -> PathBuf {
+    let Some(first) = paths.first() else {
         return PathBuf::new();
-    }
-    let mut iterators: Vec<_> = ss.iter().map(|p| p.components()).collect();
-    let mut prefix: Vec<std::path::Component> = Vec::new();
-    'outer: loop {
-        let mut next: Option<std::path::Component> = None;
-        for it in iterators.iter_mut() {
-            if let Some(c) = it.next() {
-                if let Some(prev) = next {
-                    if prev != c {
-                        break 'outer;
-                    }
-                } else {
-                    next = Some(c);
-                }
-            } else {
-                break 'outer;
-            }
-        }
-        if let Some(c) = next {
-            prefix.push(c);
-        } else {
-            break;
+    };
+    let mut prefix = if paths.len() == 1 {
+        first.parent().unwrap_or(first)
+    } else {
+        first.as_path()
+    };
+    while !paths.iter().all(|p| p.starts_with(prefix)) {
+        match prefix.parent() {
+            Some(parent) => prefix = parent,
+            None => return PathBuf::new(),
         }
     }
-    prefix.iter().collect()
+    prefix.to_path_buf()
 }
 
 #[cfg(test)]
@@ -54,6 +44,10 @@ mod tests {
                 std::path::PathBuf::from("/home/cdavison/strathclyde")
             ]),
             std::path::PathBuf::from("/home/cdavison/")
+        );
+        assert_eq!(
+            common_ancestor(&[std::path::PathBuf::from("/home/cdavison/code")]),
+            std::path::PathBuf::from("/home/cdavison")
         );
     }
 }
