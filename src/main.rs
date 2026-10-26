@@ -1,9 +1,10 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use rayon::prelude::*;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use crate::ansi_escape::{apply_color, BLACK, BOLD};
+use crate::ansi_escape::{apply_color, BLACK, BLUE, BOLD, FAINT};
 mod ansi_escape;
+mod config;
 mod git;
 mod util;
 
@@ -14,8 +15,6 @@ mod util;
 struct Cli {
     #[command(subcommand)]
     command: Option<Command>,
-    #[arg(short, long, hide = true)]
-    no_colour: bool,
     /// Colorize output: auto (default), always, or never
     #[arg(long, value_enum, default_value_t = ColorChoice::Auto)]
     color: ColorChoice,
@@ -25,7 +24,7 @@ struct Cli {
 
 #[derive(Debug, Subcommand, PartialEq)]
 enum Command {
-    /// Add the current directory to ~/.repoutilrc
+    /// Add the repo containing the current directory to ~/.repoutilrc
     #[command(aliases = &["a"])]
     Add,
     /// List directories (or glob matches) that will be tracked from ~/.repoutilrc
@@ -53,66 +52,64 @@ enum ColorChoice {
 
 #[derive(Clone)]
 struct FormatOpts<'a> {
-    common_prefix: Option<&'a Path>,
-    no_colour: bool,
+    no_color: bool,
     separator: &'a str,
 }
 
-fn main() {
+impl FormatOpts<'_> {
+    fn paint(&self, text: impl Into<String>, codes: &[&str]) -> String {
+        apply_color(text, self.no_color, codes)
+    }
+}
+
+/// One repo's line of output
+#[derive(Default)]
+struct Row {
+    /// ANSI codes for the repo path
+    path_style: &'static [&'static str],
+    /// Shown faintly after the path, e.g. the current branch
+    note: Option<String>,
+    /// Already-coloured text for the second column
+    detail: String,
+}
+
+fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
-    let (includes, _excludes) = match util::get_repos_from_config() {
-        Err(err) => {
-            eprintln!("ERR `{}`", err);
-            std::process::exit(1);
-        }
-        Ok((i, e)) => (i, e),
-    };
-
-    let repos = includes;
-    let common = if args.keep_home {
-        PathBuf::new()
-    } else {
-        util::common_ancestor(&repos)
-    };
-
-    let computed_no_colour = match args.color {
-        ColorChoice::Always => false,
-        ColorChoice::Never => true,
-        ColorChoice::Auto => !ansi_escape::should_color_stdout(),
-    } || args.no_colour;
-
-    let separator = apply_color(" · ", computed_no_colour, &[BOLD, BLACK]);
-
-    let fmt = FormatOpts {
-        common_prefix: if args.keep_home {
-            None
-        } else {
-            Some(common.as_path())
-        },
-        no_colour: computed_no_colour,
-        separator: &separator,
-    };
-
     let cmd = match args.command.unwrap_or(Command::Branchstat) {
-        // Works with any directory
-        Command::Add => {
-            if let Err(e) = git::add() {
-                println!("{}", e);
-                std::process::exit(1);
-            }
-            return;
-        }
+        // Runs before reading the config, as it may create it
+        Command::Add => return config::add(),
         Command::List => git::list,
         Command::Fetch => git::fetch,
         Command::Branchstat => git::branchstat,
         Command::Branches => git::branches,
     };
 
-    let outs: Vec<_> = repos
+    let repos = config::get_repos_from_config()?;
+    let common = if args.keep_home {
+        PathBuf::new()
+    } else {
+        util::common_ancestor(&repos)
+    };
+
+    let no_color = match args.color {
+        ColorChoice::Always => false,
+        ColorChoice::Never => true,
+        ColorChoice::Auto => !ansi_escape::should_color_stdout(),
+    };
+
+    let separator = apply_color(" · ", no_color, &[BOLD, BLACK]);
+
+    let common_prefix = (!args.keep_home).then_some(common.as_path());
+    let fmt = FormatOpts {
+        no_color,
+        separator: &separator,
+    };
+
+    let rows: Vec<_> = repos
         .par_iter()
         .filter_map(|repo| match cmd(repo, &fmt) {
-            Ok(r) => r,
+            Ok(row) => row.map(|row| (repo, row)),
             Err(e) => {
                 eprintln!("ERR {}: {}", repo.display(), e);
                 None
@@ -120,7 +117,29 @@ fn main() {
         })
         .collect();
 
-    for line in outs {
-        println!("{line}");
+    // Colour codes don't take up space, so track each header's visible width
+    let headers: Vec<_> = rows
+        .iter()
+        .map(|(repo, row)| {
+            let path = util::remove_common_ancestor(repo, common_prefix);
+            let mut width = path.chars().count();
+            let mut header = fmt.paint(path, row.path_style);
+            if let Some(note) = &row.note {
+                width += note.chars().count() + 1;
+                header.push_str(&fmt.paint(format!(" {note}"), &[FAINT, BLUE]));
+            }
+            (header, width)
+        })
+        .collect();
+    let column = headers.iter().map(|(_, w)| *w).max().unwrap_or(0);
+
+    for ((header, width), (_, row)) in headers.iter().zip(&rows) {
+        if row.detail.is_empty() {
+            println!("{header}");
+        } else {
+            let padding = " ".repeat(column - width);
+            println!("{header}{padding}  {}", row.detail);
+        }
     }
+    Ok(())
 }

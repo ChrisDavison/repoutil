@@ -22,7 +22,7 @@ Visit each configured repo in parallel, fetching remote changes for all remotes,
 
 ## `branchstat`
 
-For each configured repo, show ahead/behind against its upstream plus counts of added, deleted, modified, and untracked files. Repos with nothing to report are hidden.
+For each configured repo, show ahead/behind against its upstream plus counts of added, deleted, modified, and untracked files. The current branch is shown after the path when it is not `main` or `master`. Repos with nothing to report are hidden.
 
 ## Options
 
@@ -31,4 +31,4 @@ For each configured repo, show ahead/behind against its upstream plus counts of 
 
 ## Configuration
 
-Populate `~/.repoutilrc` with lines containing either repo paths or directories to scan for repos. Lines starting with `!` are exclusions; blank lines and `#` comments are ignored. `~` is expanded at the start of the path.
+Populate `~/.repoutilrc` with lines containing either repo paths or directories to scan for repos. Lines starting with `!` are exclusions, hiding any repo at or under that path; blank lines and `#` comments are ignored. `~` is expanded at the start of the path.
